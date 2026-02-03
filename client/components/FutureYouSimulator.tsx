@@ -75,23 +75,27 @@ export default function FutureYouSimulator({ isOpen, onClose, stats }: Props) {
     if (!isOpen) return null;
 
     return (
+    return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <Card className="w-full max-w-2xl bg-white border-2 border-indigo-100 shadow-2xl relative overflow-hidden">
+            <Card className="w-full max-w-2xl bg-white border-2 border-indigo-100 shadow-2xl relative overflow-hidden max-h-[90vh] flex flex-col">
                 {/* Header */}
-                <div className="bg-indigo-600 p-6 text-white relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-8 opacity-10"><Sparkles size={120} /></div>
-                    <h2 className="text-2xl font-black flex items-center gap-2 relative z-10">
-                        <TrendingUp className="h-6 w-6" /> Future You Simulator
+                <div className="bg-indigo-600 p-4 md:p-6 text-white relative overflow-hidden flex-shrink-0">
+                    <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none"><Sparkles size={120} /></div>
+                    <h2 className="text-xl md:text-2xl font-black flex items-center gap-2 relative z-10">
+                        <TrendingUp className="h-5 w-5 md:h-6 md:w-6" /> Future You Simulator
                     </h2>
-                    <p className="opacity-80 relative z-10">See where consistency takes you.</p>
-                    <button onClick={onClose} className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 rounded-full p-2 transition-colors">
-                        <span className="sr-only">Close</span>
+                    <p className="opacity-80 relative z-10 text-sm md:text-base">See where consistency takes you.</p>
+                    <button
+                        onClick={onClose}
+                        className="absolute top-3 right-3 md:top-4 md:right-4 bg-white/20 hover:bg-white/30 text-white rounded-full p-2 transition-colors z-50"
+                        aria-label="Close"
+                    >
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
                     </button>
                 </div>
 
-                <CardContent className="p-6">
-                    <div className="mb-8 p-4 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                <CardContent className="p-4 md:p-6 overflow-y-auto">
+                    <div className="mb-6 md:mb-8 p-3 md:p-4 bg-indigo-50/50 rounded-xl border border-indigo-100">
                         <label className="text-sm font-bold text-slate-700 uppercase tracking-widest mb-4 block flex justify-between">
                             <span>Projection Duration</span>
                             <span className="text-indigo-600">{days} Days</span>
@@ -102,17 +106,17 @@ export default function FutureYouSimulator({ isOpen, onClose, stats }: Props) {
                             min={7} max={365} step={1}
                             className="py-4"
                         />
-                        <div className="flex justify-between text-xs text-slate-400 font-medium px-1">
+                        <div className="flex justify-between text-[10px] md:text-xs text-slate-400 font-medium px-1">
                             <span>1 Week</span>
                             <span>1 Month</span>
                             <span>1 Year</span>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                         {/* The Path of Consistency */}
-                        <div className="space-y-4">
-                            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                        <div className="space-y-3 md:space-y-4">
+                            <h3 className="font-bold text-slate-800 flex items-center gap-2 text-sm md:text-base">
                                 <span className="p-1 bg-green-100 rounded text-green-600"><TrendingUp size={16} /></span>
                                 If you keep going...
                             </h3>
@@ -120,13 +124,13 @@ export default function FutureYouSimulator({ isOpen, onClose, stats }: Props) {
                             <div className="bg-white border-2 border-green-100 rounded-xl p-4 shadow-sm relative overflow-hidden group">
                                 <div className="absolute top-0 right-0 w-24 h-24 bg-green-50 rounded-full blur-2xl -mr-10 -mt-10 transition-all group-hover:bg-green-100"></div>
                                 <div className="relative z-10">
-                                    <div className="text-sm text-slate-500 font-bold uppercase tracking-wider">Projected Level</div>
-                                    <div className="text-5xl font-black text-slate-800 my-2">{projection?.level}</div>
-                                    <div className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-bold">
+                                    <div className="text-[10px] md:text-sm text-slate-500 font-bold uppercase tracking-wider">Projected Level</div>
+                                    <div className="text-4xl md:text-5xl font-black text-slate-800 my-2">{projection?.level}</div>
+                                    <div className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] md:text-xs font-bold">
                                         Rank: {projection?.rank}
                                     </div>
                                     <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between items-end">
-                                        <div className="text-sm text-slate-500">Total XP Gained</div>
+                                        <div className="text-[10px] md:text-sm text-slate-500">Total XP Gained</div>
                                         <div className="font-mono font-bold text-green-600">+{projection?.xpGained.toLocaleString()}</div>
                                     </div>
                                 </div>
@@ -134,25 +138,25 @@ export default function FutureYouSimulator({ isOpen, onClose, stats }: Props) {
                         </div>
 
                         {/* The Cost of Quitting */}
-                        <div className="space-y-4">
-                            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                        <div className="space-y-3 md:space-y-4">
+                            <h3 className="font-bold text-slate-800 flex items-center gap-2 text-sm md:text-base">
                                 <span className="p-1 bg-red-100 rounded text-red-600"><Skull size={16} /></span>
                                 If you stop today...
                             </h3>
 
                             <div className="bg-slate-50 border-2 border-slate-100 rounded-xl p-4 relative overflow-hidden grayscale">
-                                <div className="text-sm text-slate-500 font-bold uppercase tracking-wider">Projected Level</div>
-                                <div className="text-5xl font-black text-slate-400 my-2">{stats?.level}</div>
-                                <div className="inline-flex items-center gap-1 px-2 py-1 bg-slate-200 text-slate-500 rounded text-xs font-bold">
+                                <div className="text-[10px] md:text-sm text-slate-500 font-bold uppercase tracking-wider">Projected Level</div>
+                                <div className="text-4xl md:text-5xl font-black text-slate-400 my-2">{stats?.level}</div>
+                                <div className="inline-flex items-center gap-1 px-2 py-1 bg-slate-200 text-slate-500 rounded text-[10px] md:text-xs font-bold">
                                     Rank: Stagnant
                                 </div>
                                 <div className="mt-4 pt-4 border-t border-slate-200 flex justify-between items-end">
-                                    <div className="text-sm text-slate-500">XP Missed</div>
+                                    <div className="text-[10px] md:text-sm text-slate-500">XP Missed</div>
                                     <div className="font-mono font-bold text-red-400">-{projection?.xpGained.toLocaleString()}</div>
                                 </div>
                             </div>
 
-                            <p className="text-xs text-slate-400 italic text-center mt-2">
+                            <p className="text-[10px] md:text-xs text-slate-400 italic text-center mt-2">
                                 "The only bad workout is the one that didn't happen."
                             </p>
                         </div>
