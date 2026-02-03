@@ -1,0 +1,81 @@
+2026-02-01T19:21:24.029Z - next is not a function
+TypeError: next is not a function
+    at model.<anonymous> (C:\Users\asus\Desktop\habbit tracker\server\models\User.js:55:9)
+    at Kareem.execPre (C:\Users\asus\Desktop\habbit tracker\server\node_modules\kareem\index.js:63:39)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async model.$__save (C:\Users\asus\Desktop\habbit tracker\server\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (C:\Users\asus\Desktop\habbit tracker\server\node_modules\mongoose\lib\model.js:609:5)
+    at async C:\Users\asus\Desktop\habbit tracker\server\routes\analytics.js:105:9
+
+2026-02-01T19:21:24.340Z - next is not a function
+TypeError: next is not a function
+    at model.<anonymous> (C:\Users\asus\Desktop\habbit tracker\server\models\User.js:55:9)
+    at Kareem.execPre (C:\Users\asus\Desktop\habbit tracker\server\node_modules\kareem\index.js:63:39)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async model.$__save (C:\Users\asus\Desktop\habbit tracker\server\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (C:\Users\asus\Desktop\habbit tracker\server\node_modules\mongoose\lib\model.js:609:5)
+    at async C:\Users\asus\Desktop\habbit tracker\server\routes\analytics.js:105:9
+
+2026-02-01T19:22:47.263Z - next is not a function
+TypeError: next is not a function
+    at model.<anonymous> (C:\Users\asus\Desktop\habbit tracker\server\models\User.js:55:9)
+    at Kareem.execPre (C:\Users\asus\Desktop\habbit tracker\server\node_modules\kareem\index.js:63:39)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async model.$__save (C:\Users\asus\Desktop\habbit tracker\server\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (C:\Users\asus\Desktop\habbit tracker\server\node_modules\mongoose\lib\model.js:609:5)
+    at async C:\Users\asus\Desktop\habbit tracker\server\routes\analytics.js:105:9
+
+2026-02-01T19:23:20.664Z - next is not a function
+TypeError: next is not a function
+    at model.<anonymous> (C:\Users\asus\Desktop\habbit tracker\server\models\User.js:55:16)
+    at Kareem.execPre (C:\Users\asus\Desktop\habbit tracker\server\node_modules\kareem\index.js:63:39)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async model.$__save (C:\Users\asus\Desktop\habbit tracker\server\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (C:\Users\asus\Desktop\habbit tracker\server\node_modules\mongoose\lib\model.js:609:5)
+    at async C:\Users\asus\Desktop\habbit tracker\server\routes\analytics.js:105:9
+
+2026-02-01T19:23:30.571Z - next is not a function
+TypeError: next is not a function
+    at model.<anonymous> (C:\Users\asus\Desktop\habbit tracker\server\models\User.js:55:16)
+    at Kareem.execPre (C:\Users\asus\Desktop\habbit tracker\server\node_modules\kareem\index.js:63:39)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async model.$__save (C:\Users\asus\Desktop\habbit tracker\server\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (C:\Users\asus\Desktop\habbit tracker\server\node_modules\mongoose\lib\model.js:609:5)
+    at async C:\Users\asus\Desktop\habbit tracker\server\routes\analytics.js:105:9
+
+2026-02-01T19:24:25.282Z - next is not a function
+TypeError: next is not a function
+    at model.<anonymous> (C:\Users\asus\Desktop\habbit tracker\server\models\User.js:55:16)
+    at Kareem.execPre (C:\Users\asus\Desktop\habbit tracker\server\node_modules\kareem\index.js:63:39)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async model.$__save (C:\Users\asus\Desktop\habbit tracker\server\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (C:\Users\asus\Desktop\habbit tracker\server\node_modules\mongoose\lib\model.js:609:5)
+    at async C:\Users\asus\Desktop\habbit tracker\server\routes\analytics.js:105:9
+
+2026-02-01T19:24:25.575Z - next is not a function
+TypeError: next is not a function
+    at model.<anonymous> (C:\Users\asus\Desktop\habbit tracker\server\models\User.js:55:16)
+    at Kareem.execPre (C:\Users\asus\Desktop\habbit tracker\server\node_modules\kareem\index.js:63:39)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async model.$__save (C:\Users\asus\Desktop\habbit tracker\server\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (C:\Users\asus\Desktop\habbit tracker\server\node_modules\mongoose\lib\model.js:609:5)
+    at async C:\Users\asus\Desktop\habbit tracker\server\routes\analytics.js:105:9
+
+2026-02-01T19:25:06.915Z - next is not a function
+TypeError: next is not a function
+    at model.<anonymous> (C:\Users\asus\Desktop\habbit tracker\server\models\User.js:55:16)
+    at Kareem.execPre (C:\Users\asus\Desktop\habbit tracker\server\node_modules\kareem\index.js:63:39)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async model.$__save (C:\Users\asus\Desktop\habbit tracker\server\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (C:\Users\asus\Desktop\habbit tracker\server\node_modules\mongoose\lib\model.js:609:5)
+    at async C:\Users\asus\Desktop\habbit tracker\server\routes\analytics.js:105:9
+
+2026-02-01T19:25:25.716Z - next is not a function
+TypeError: next is not a function
+    at model.<anonymous> (C:\Users\asus\Desktop\habbit tracker\server\models\User.js:55:16)
+    at Kareem.execPre (C:\Users\asus\Desktop\habbit tracker\server\node_modules\kareem\index.js:63:39)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async model.$__save (C:\Users\asus\Desktop\habbit tracker\server\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (C:\Users\asus\Desktop\habbit tracker\server\node_modules\mongoose\lib\model.js:609:5)
+    at async C:\Users\asus\Desktop\habbit tracker\server\routes\analytics.js:105:9
+
