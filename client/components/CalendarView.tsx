@@ -53,7 +53,22 @@ export default function CalendarView({ habits }: CalendarViewProps) {
         let totalHabits = 0;
 
         habits.forEach(habit => {
-            // Simplified check: assume all habits are active every day (advanced would check start date / frequency)
+            // Check if habit existed on this date
+            const created = new Date(habit.createdAt || habit.startDate || 0);
+            // Reset times to compare dates only
+            created.setHours(0, 0, 0, 0);
+            const targetDate = new Date(date);
+            targetDate.setHours(0, 0, 0, 0);
+
+            if (targetDate < created) return;
+
+            // Check endDate if exists
+            if (habit.endDate) {
+                const end = new Date(habit.endDate);
+                end.setHours(23, 59, 59, 999);
+                if (targetDate > end) return;
+            }
+
             totalHabits++;
 
             const historyEntry = habit.history?.find((h: any) =>
