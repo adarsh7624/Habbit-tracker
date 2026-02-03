@@ -58,10 +58,10 @@ export default function AICoach() {
     };
 
     return (
-        <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end pointer-events-none">
+        <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex flex-col items-end pointer-events-none">
             {/* Chat Window */}
             {isOpen && (
-                <Card className="w-80 md:w-96 shadow-2xl border-primary/20 mb-4 animate-in fade-in slide-in-from-bottom-10 pointer-events-auto bg-background/95 backdrop-blur">
+                <Card className="w-[calc(100vw-2rem)] sm:w-80 md:w-96 shadow-2xl border-primary/20 mb-4 animate-in fade-in slide-in-from-bottom-10 pointer-events-auto bg-background/95 backdrop-blur">
                     <CardHeader className="flex flex-row items-center justify-between py-3 border-b bg-primary/5">
                         <div className="flex items-center gap-2">
                             <div className="bg-primary p-1.5 rounded-lg">
@@ -85,7 +85,7 @@ export default function AICoach() {
 
                     <CardContent className="p-0">
                         {/* Messages Area */}
-                        <div ref={scrollRef} className="h-80 overflow-y-auto p-4 space-y-4">
+                        <div ref={scrollRef} className="h-[50vh] sm:h-80 overflow-y-auto p-4 space-y-4">
                             {messages.length === 0 && (
                                 <div className="text-center text-muted-foreground text-sm mt-10 space-y-2">
                                     <Sparkles className="h-8 w-8 mx-auto text-primary/30" />
@@ -100,7 +100,7 @@ export default function AICoach() {
                                         }`}>
                                         {m.role === 'user' ? <User size={12} /> : <Bot size={12} />}
                                     </div>
-                                    <div className={`rounded-2xl px-3 py-2 text-sm max-w-[80%] ${m.role === 'user'
+                                    <div className={`rounded-2xl px-3 py-2 text-sm max-w-[80%] break-words ${m.role === 'user'
                                         ? 'bg-primary text-primary-foreground rounded-tr-none'
                                         : 'bg-muted rounded-tl-none'
                                         }`}>

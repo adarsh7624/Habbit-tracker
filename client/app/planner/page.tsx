@@ -269,13 +269,13 @@ export default function PlannerPage() {
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
 
                             {/* Overview Section */}
-                            <div className="flex flex-col gap-4 bg-card p-6 rounded-xl border shadow-sm">
-                                <div className="flex items-start justify-between">
+                            <div className="flex flex-col gap-4 bg-card p-4 md:p-6 rounded-xl border shadow-sm">
+                                <div className="flex flex-col md:flex-row items-start justify-between gap-4">
                                     <div className="space-y-1">
                                         <h2 className="text-2xl font-semibold">Your Blueprint</h2>
                                         <p className="text-muted-foreground">{plan.overview}</p>
                                     </div>
-                                    <div className="flex gap-2">
+                                    <div className="flex flex-wrap gap-2 w-full md:w-auto">
                                         <Button
                                             variant="outline"
                                             onClick={() => setShowRecovery(!showRecovery)}
@@ -293,7 +293,7 @@ export default function PlannerPage() {
 
                                 {/* Recovery Mode Input */}
                                 {showRecovery && (
-                                    <div className="bg-amber-50/50 border border-amber-100 p-4 rounded-lg flex items-center gap-4 animate-in slide-in-from-top-2">
+                                    <div className="bg-amber-50/50 border border-amber-100 p-4 rounded-lg flex flex-col md:flex-row items-start md:items-center gap-4 animate-in slide-in-from-top-2">
                                         <div className="flex-1">
                                             <h4 className="font-semibold text-amber-900 text-sm">Focus Mode Activation</h4>
                                             <p className="text-xs text-amber-800">We'll intelligently redistribute your missed tasks without overwhelming you.</p>
@@ -342,7 +342,7 @@ export default function PlannerPage() {
                                                 "{adjustment.coachMessage}"
                                             </p>
 
-                                            <div className="mt-6 flex gap-4">
+                                            <div className="mt-6 flex flex-wrap gap-4">
                                                 <div className="bg-white/60 backdrop-blur px-4 py-2 rounded-lg border border-amber-100">
                                                     <span className="text-xs text-amber-600 uppercase font-bold tracking-wider">Missed</span>
                                                     <div className="text-xl font-bold text-amber-900">{adjustment.missedDays} Days</div>
@@ -381,7 +381,7 @@ export default function PlannerPage() {
                                                     </div>
 
                                                     {/* Time Breakdown */}
-                                                    <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                                    <div className="flex flex-wrap items-center gap-3 bg-slate-50 p-2 rounded-lg border border-slate-100 w-full md:w-auto justify-center md:justify-start">
                                                         <div className="text-center px-2">
                                                             <div className="text-xs text-slate-400 font-medium uppercase">Original</div>
                                                             <div className="text-sm font-semibold text-slate-600 line-through decoration-slate-400 decoration-2">{day.originalDuration}</div>
@@ -442,7 +442,7 @@ export default function PlannerPage() {
                                                                         )}
                                                                     </div>
                                                                 </div>
-                                                                <div className="flex items-center gap-3 text-xs text-muted-foreground min-w-fit">
+                                                                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground min-w-fit mt-2 md:mt-0">
                                                                     <span className="flex items-center gap-1 bg-secondary px-2 py-1 rounded-full text-secondary-foreground">
                                                                         <Clock size={12} /> {day.duration}
                                                                     </span>

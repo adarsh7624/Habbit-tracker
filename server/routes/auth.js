@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
@@ -11,8 +12,6 @@ const generateToken = (id) => {
 };
 
 // @desc    Register a new user
-// @route   POST /api/auth/signup
-// @access  Public
 router.post('/signup', async (req, res) => {
     const { name, email, password } = req.body;
 
