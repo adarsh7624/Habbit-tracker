@@ -32,6 +32,15 @@ const HabitSchema = new mongoose.Schema({
     reminderTime: {
         type: String, // '09:00'
     },
+    difficulty: {
+        type: Number, // 1-5 scale
+        default: 1
+    },
+    priority: {
+        type: String,
+        enum: ['low', 'medium', 'high'],
+        default: 'medium'
+    },
     streak: {
         type: Number,
         default: 0,
@@ -47,8 +56,12 @@ const HabitSchema = new mongoose.Schema({
         },
         status: {
             type: String,
-            enum: ['completed', 'skipped', 'missed'],
+            enum: ['completed', 'skipped', 'missed', 'partial'],
             default: 'completed'
+        },
+        progress: {
+            type: Number, // 0-100 for partial
+            default: 100
         }
     }],
     isArchived: {

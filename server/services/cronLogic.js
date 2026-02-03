@@ -44,6 +44,7 @@ async function getDailyHabits(userId) {
 // 1. Morning Briefing Logic
 const sendMorningBriefing = async (user) => {
     if (user.isPaused) return { sent: false, reason: 'User is paused' };
+    if (user.silentMode) return { sent: false, reason: 'Silent Mode Active' };
 
     const { tasks, dateStr } = await getDailyTasks(user._id);
     const habits = await getDailyHabits(user._id);
@@ -73,6 +74,7 @@ const sendMorningBriefing = async (user) => {
 // 2. Evening Nudge Logic
 const sendEveningNudge = async (user) => {
     if (user.isPaused) return { sent: false, reason: 'User is paused' };
+    if (user.silentMode) return { sent: false, reason: 'Silent Mode Active' };
 
     const { tasks } = await getDailyTasks(user._id);
     const habits = await getDailyHabits(user._id);
@@ -125,28 +127,66 @@ const sendDailyReport = async (user) => {
 
     const percent = Math.round((completed / total) * 100);
 
+    // --- PHASE 15: CONSISTENCY ENGINE ---
+    let savedByInsurance = false;
+    let earnedToken = false;
+
+    // 1. Check for Streak Failure
+    if (percent < 100) {
+        // User failed to complete everything. Check insurance.
+        if (user.insuranceTokens > 0) {
+            user.insuranceTokens -= 1;
+            savedByInsurance = true;
+            // Streak preserved (neither incremented nor reset)
+        } else {
+            user.streak = 0; // Streak broken
+        }
+    } else {
+        // 2. Success! Increment Streak
+        user.streak += 1;
+
+        // 3. Check for Token Reward (Every 7 days)
+        if (user.streak % 7 === 0) {
+            user.insuranceTokens += 1;
+            earnedToken = true;
+        }
+    }
+
+    // 4. Update Momentum (Daily Recalculation)
+    user.momentumScore = Math.floor((user.streak * 10) + (user.points / 100));
+    await user.save();
+    // -------------------------------------
+
+    // SILENT MODE check
+    if (user.silentMode) {
+        return { sent: false, reason: 'Silent Mode Active' };
+    }
+
     let verdict = "";
     let msg = "";
 
     if (user.personality === 'calm') {
         if (percent === 100) verdict = "Perfect harmony. 🌿";
+        else if (savedByInsurance) verdict = "Streak saved by insurance. Breathe. 🛡️";
         else if (percent >= 50) verdict = "Good effort today.";
         else verdict = "Tomorrow is a new beginning.";
 
-        msg = `📉 *Daily Reflection (${dateStr})*\n\nHabits: ${completedHabits}/${totalHabits}\nTasks: ${completedTasks}/${totalTasks}\nScore: ${percent}%\n\n${verdict}\n\nSleep peacefully. 💤`;
+        msg = `📉 *Daily Reflection (${dateStr})*\n\nHabits: ${completedHabits}/${totalHabits}\nTasks: ${completedTasks}/${totalTasks}\nScore: ${percent}%\n\n${verdict}\n${earnedToken ? '🌟 New Consistency Token Earned!' : ''}\nSleep peacefully. 💤`;
     } else if (user.personality === 'aggressive') {
         if (percent === 100) verdict = "CHAMPION. 🏆";
+        else if (savedByInsurance) verdict = "WEAKNESS DETECTED. Token burned. 🛡️";
         else if (percent >= 80) verdict = "Acceptable. Push harder.";
         else verdict = "WEAKNESS DETECTED. DO BETTER. 🛑";
 
-        msg = `💀 *REPORT CARD (${dateStr})*\n\nScore: ${percent}%\nActions: ${completed}/${total}\n\n${verdict}\n\nReset. Tomorrow we dominate.`;
+        msg = `💀 *REPORT CARD (${dateStr})*\n\nScore: ${percent}%\nActions: ${completed}/${total}\n\n${verdict}\n${earnedToken ? '🔥 TOKEN EARNED.' : ''}\n\nReset. Tomorrow we dominate.`;
     } else {
         if (percent === 100) verdict = "🏆 Perfect Score!";
+        else if (savedByInsurance) verdict = "🛡️ Streak saved with Insurance!";
         else if (percent >= 80) verdict = "🌟 Great Job!";
         else if (percent >= 50) verdict = "👍 Good Effort.";
         else verdict = "📉 Need more focus tomorrow.";
 
-        msg = `📊 *Daily Report (${dateStr})*\n\n✅ Habits: ${completedHabits}/${totalHabits}\n✅ Tasks: ${completedTasks}/${totalTasks}\n📈 Total Score: ${percent}%\n\n${verdict}\n\nSleep well and reset for tomorrow! 💤`;
+        msg = `📊 *Daily Report (${dateStr})*\n\n✅ Habits: ${completedHabits}/${totalHabits}\n✅ Tasks: ${completedTasks}/${totalTasks}\n📈 Total Score: ${percent}%\n\n${verdict}\n${earnedToken ? '💎 Consistency Token Earned!' : ''}\n\nSleep well and reset for tomorrow! 💤`;
     }
 
     await sendWhatsAppMessage(user.phoneNumber, msg);

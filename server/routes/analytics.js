@@ -124,18 +124,22 @@ router.get('/dashboard-stats', protect, async (req, res) => {
             consistency: consistency
         };
 
+        const habitCount = await require('../models/Habit').countDocuments({ user: userId, isArchived: false });
+
         res.json({
             xp: user.points,
             level: user.level,
             streak,
             maxStreak: user.maxStreak,
+            momentum: user.momentumScore || 0, // <--- Added
+            habitCount, // <--- Added
             rank: user.rank,
             maxRank: user.maxRank,
             consistency,
             burnoutRisk,
             failurePrediction,
             dna,
-            phoneNumber: user.phoneNumber // <--- Added for Settings UI
+            phoneNumber: user.phoneNumber
         });
 
     } catch (error) {

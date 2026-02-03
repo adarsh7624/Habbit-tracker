@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import CalendarView from '@/components/CalendarView';
 import WeekView from '@/components/WeekView';
 import TaskTimeline from '@/components/TaskTimeline';
+import FutureYouSimulator from '@/components/FutureYouSimulator';
 
 type Habit = {
     _id: string;
@@ -55,6 +56,8 @@ export default function Dashboard() {
     // Pause Modal State
     const [showPauseModal, setShowPauseModal] = useState(false);
     const [pauseDuration, setPauseDuration] = useState('7'); // Default 7 days
+    const [showSimulator, setShowSimulator] = useState(false);
+    const [silentMode, setSilentMode] = useState(false); // <--- Added // <--- Added
 
     // ... useEffect ...
 
@@ -116,7 +119,8 @@ export default function Dashboard() {
             const userRes = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/profile`, {}, { headers: { Authorization: `Bearer ${authToken}` } });
             setPersonality(userRes.data.personality || 'balanced');
             setIsPaused(userRes.data.isPaused || false);
-            setPausedUntil(userRes.data.pausedUntil || null); // <--- Added
+            setSilentMode(userRes.data.silentMode || false); // <--- Added
+            setPausedUntil(userRes.data.pausedUntil || null);
 
             const today = new Date().toISOString().split('T')[0];
             const todaysTasks = tasksRes.data.filter((t: any) => t.date.startsWith(today));
@@ -152,12 +156,12 @@ export default function Dashboard() {
         }
     };
 
-    const toggleHabit = async (id: string) => {
+    const toggleHabit = async (id: string, status: 'completed' | 'partial' = 'completed', progress: number = 100) => {
         try {
             const today = new Date().toISOString();
             await axios.put(
                 `${process.env.NEXT_PUBLIC_API_URL}/api/habits/${id}/check`,
-                { date: today, status: 'completed' },
+                { date: today, status, progress },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             if (token) fetchData(token);
@@ -190,10 +194,11 @@ export default function Dashboard() {
         }
     };
 
-    const isCompletedToday = (history: { date: string; status: string }[]) => {
-        if (!history) return false;
+    const getTodayStatus = (history: { date: string; status: string }[]) => {
+        if (!history) return null;
         const today = new Date().setHours(0, 0, 0, 0);
-        return history.some((h) => new Date(h.date).setHours(0, 0, 0, 0) === today && h.status === 'completed');
+        const entry = history.find((h) => new Date(h.date).setHours(0, 0, 0, 0) === today);
+        return entry ? entry.status : null;
     };
 
     const xpProgress = stats ? (stats.xp % 100) : 0;
@@ -362,8 +367,54 @@ export default function Dashboard() {
                                                     <span className="font-bold text-orange-600 text-xs">{stats?.maxStreak || 0} days</span>
                                                 </div>
                                             </div>
+                                            {/* Silent Mode Toggle */}
+                                            <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                                                <div className="flex items-center gap-2">
+                                                    {silentMode ? <div className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" /> : <div className="h-2 w-2 rounded-full bg-slate-300" />}
+                                                    <span className="font-medium text-sm">Silent Accountability</span>
+                                                </div>
+                                                <Button
+                                                    variant={silentMode ? "secondary" : "outline"}
+                                                    size="sm"
+                                                    onClick={async () => {
+                                                        try {
+                                                            const newMode = !silentMode;
+                                                            await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/profile`,
+                                                                { silentMode: newMode },
+                                                                { headers: { Authorization: `Bearer ${token}` } }
+                                                            );
+                                                            setSilentMode(newMode);
+                                                        } catch (err) {
+                                                            alert('Failed to update setting');
+                                                        }
+                                                    }}
+                                                    className={silentMode ? "bg-indigo-100 text-indigo-700 hover:bg-indigo-200" : ""}
+                                                >
+                                                    {silentMode ? 'Active 🤫' : 'Off 🔔'}
+                                                </Button>
+                                            </div>
+
+                                            <Button
+                                                variant="outline"
+                                                className="w-full text-indigo-600 border-indigo-200 hover:bg-indigo-50 mt-2"
+                                                onClick={() => setShowSimulator(true)}
+                                            >
+                                                <Sparkles className="w-4 h-4 mr-2" /> Future You
+                                            </Button>
                                         </CardContent>
                                     </Card>
+
+                                    <FutureYouSimulator
+                                        isOpen={showSimulator}
+                                        onClose={() => setShowSimulator(false)}
+                                        stats={{
+                                            level: stats?.level || 1,
+                                            xp: stats?.xp || 0,
+                                            streak: stats?.streak || 0,
+                                            momentum: stats?.momentum || 0,
+                                            habitCount: stats?.habitCount || 0
+                                        }}
+                                    />
                                 </div>
                             );
                         })()}
@@ -509,7 +560,9 @@ export default function Dashboard() {
                                     ) : (
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                             {habits.map((habit) => {
-                                                const finished = isCompletedToday(habit.history);
+                                                const status = getTodayStatus(habit.history);
+                                                const finished = status === 'completed';
+                                                const partial = status === 'partial';
 
                                                 // Calculate time left (Client-side only)
                                                 let timeDisplay = null;
@@ -527,7 +580,9 @@ export default function Dashboard() {
                                                 }
 
                                                 return (
-                                                    <Card key={habit._id} className={`group hover:shadow-lg transition-all duration-300 ${finished ? 'bg-green-50/50 dark:bg-green-900/10 border-green-200' : 'hover:border-primary/50'
+                                                    <Card key={habit._id} className={`group hover:shadow-lg transition-all duration-300 ${finished ? 'bg-green-50/50 dark:bg-green-900/10 border-green-200' :
+                                                        partial ? 'bg-yellow-50/50 border-yellow-200' :
+                                                            'hover:border-primary/50'
                                                         }`}>
                                                         <CardContent className="p-5">
                                                             <div className="flex justify-between items-start mb-4">
@@ -535,20 +590,36 @@ export default function Dashboard() {
                                                                     <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-secondary px-2 py-1 rounded-full">
                                                                         {habit.category}
                                                                     </span>
-                                                                    <h3 className={`font-bold text-lg mt-2 ${finished ? 'text-muted-foreground line-through decoration-green-500/50' : ''}`}>
+                                                                    <h3 className={`font-bold text-lg mt-2 ${finished ? 'text-muted-foreground line-through decoration-green-500/50' : partial ? 'text-yellow-700' : ''}`}>
                                                                         {habit.title}
                                                                     </h3>
+                                                                    {partial && <span className="text-[10px] font-bold text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded-full">PARTIAL WIN</span>}
                                                                 </div>
-                                                                <button
-                                                                    onClick={() => toggleHabit(habit._id)}
-                                                                    disabled={finished}
-                                                                    className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all duration-500 ${finished
-                                                                        ? 'bg-green-500 text-white shadow-green-500/30 shadow-lg scale-110'
-                                                                        : 'bg-muted hover:bg-primary hover:text-white'
-                                                                        }`}
-                                                                >
-                                                                    {finished ? <Check className="h-6 w-6" /> : <div className="h-4 w-4 rounded-full border-2 border-current" />}
-                                                                </button>
+                                                                <div className="flex gap-2">
+                                                                    {/* Partial Button - Only show if pending */}
+                                                                    {!finished && !partial && (
+                                                                        <button
+                                                                            onClick={() => toggleHabit(habit._id, 'partial', 50)}
+                                                                            title="Partial Win (50%)"
+                                                                            className="h-10 w-10 rounded-xl flex items-center justify-center transition-all duration-300 bg-yellow-50 text-yellow-600 hover:bg-yellow-200 hover:scale-105"
+                                                                        >
+                                                                            <div className="h-4 w-4 rounded-full border-2 border-current border-t-transparent" />
+                                                                        </button>
+                                                                    )}
+
+                                                                    {/* Complete Button */}
+                                                                    <button
+                                                                        onClick={() => toggleHabit(habit._id, 'completed')}
+                                                                        className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all duration-500 ${finished
+                                                                            ? 'bg-green-500 text-white shadow-green-500/30 shadow-lg scale-110'
+                                                                            : partial
+                                                                                ? 'bg-yellow-500 text-white shadow-yellow-500/30'
+                                                                                : 'bg-muted hover:bg-primary hover:text-white'
+                                                                            }`}
+                                                                    >
+                                                                        {finished ? <Check className="h-6 w-6" /> : partial ? <span className="font-bold text-xs">50%</span> : <div className="h-4 w-4 rounded-full border-2 border-current" />}
+                                                                    </button>
+                                                                </div>
                                                             </div>
 
                                                             <div className="flex items-center justify-between mt-6 pt-4 border-t border-dashed border-muted-foreground/20">
@@ -557,7 +628,7 @@ export default function Dashboard() {
                                                                         <Flame className="h-3 w-3 mr-1" />
                                                                         {habit.streak} day streak
                                                                     </div>
-                                                                    {!finished && timeDisplay && (
+                                                                    {!finished && !partial && timeDisplay && (
                                                                         <div className={`flex items-center text-xs font-semibold px-2 py-1 rounded ${isUrgent ? 'bg-red-50 text-red-600 animate-pulse' : 'bg-blue-50 text-blue-600'}`}>
                                                                             <Clock className="h-3 w-3 mr-1" />
                                                                             {timeDisplay}

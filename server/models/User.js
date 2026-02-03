@@ -55,6 +55,23 @@ const UserSchema = new mongoose.Schema({
     },
     pausedUntil: {
         type: Date
+    },
+    // Phase 14: Core Intelligence Fields
+    insuranceTokens: {
+        type: Number,
+        default: 0
+    },
+    momentumScore: {
+        type: Number,
+        default: 0
+    },
+    habitDNA: {
+        type: Object, // Stores analysis like { bestTime: '08:00', recoverySpeed: 2, etc. }
+        default: {}
+    },
+    silentMode: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true,

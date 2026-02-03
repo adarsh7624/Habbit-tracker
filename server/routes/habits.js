@@ -80,7 +80,7 @@ router.post('/bulk', protect, async (req, res) => {
 // @access  Private
 router.put('/:id/check', protect, async (req, res) => {
     try {
-        const { date, status } = req.body; // Expect date string and status ('completed', 'skipped')
+        const { date, status, progress } = req.body; // Expect date string, status ('completed', 'skipped', 'partial'), and progress (0-100)
         const habit = await Habit.findById(req.params.id);
 
         if (habit.user.toString() !== req.user.id) {
@@ -99,36 +99,40 @@ router.put('/:id/check', protect, async (req, res) => {
 
         // XP Logic
         const user = await User.findById(req.user.id);
-        const XP_REWARD = 15; // Habits are hard, give 15 XP
+        const XP_FULL = 15;
+        const XP_PARTIAL = 7;
+
+        const getXpForStatus = (s) => {
+            if (s === 'completed') return XP_FULL;
+            if (s === 'partial') return XP_PARTIAL;
+            return 0;
+        };
 
         if (existingIndex !== -1) {
             // Updating existing
             const oldStatus = habit.history[existingIndex].status;
+            const newStatus = status || 'completed';
 
-            // If changing from non-completed to completed -> Add XP
-            if (oldStatus !== 'completed' && status === 'completed') {
-                user.points += XP_REWARD;
-            }
-            // If changing from completed to non-completed -> Remove XP
-            else if (oldStatus === 'completed' && status !== 'completed') {
-                user.points = Math.max(0, user.points - XP_REWARD);
-            }
+            // Revert old XP then add new XP
+            user.points = Math.max(0, user.points - getXpForStatus(oldStatus));
+            user.points += getXpForStatus(newStatus);
 
-            habit.history[existingIndex].status = status || 'completed';
+            habit.history[existingIndex].status = newStatus;
+            habit.history[existingIndex].progress = (newStatus === 'partial' && progress) ? progress : (newStatus === 'completed' ? 100 : 0);
         } else {
             // New Entry
+            const newStatus = status || 'completed';
             habit.history.push({
                 date: checkDate,
-                status: status || 'completed'
+                status: newStatus,
+                progress: (newStatus === 'partial' && progress) ? progress : (newStatus === 'completed' ? 100 : 0)
             });
 
-            // Add XP if completed
-            if ((status || 'completed') === 'completed') {
-                user.points += XP_REWARD;
-            }
+            // Add XP
+            user.points += getXpForStatus(newStatus);
 
-            // Simple streak logic on addition (needs comprehensive recalc for accurate logic)
-            if (status !== 'skipped') {
+            // Streak Logic (Partial counts as keeping streak alive?? For now, yes.)
+            if (status !== 'skipped' && status !== 'missed') {
                 habit.streak += 1;
             }
         }
@@ -138,6 +142,27 @@ router.put('/:id/check', protect, async (req, res) => {
         if (user.points >= nextLevel) {
             user.level += 1;
         }
+
+        // --- PHASE 15: GAMIFICATION ENGINE ---
+
+        // 1. Calculate Momentum
+        // Formula: (Current Streak * 10) + (XP / 100)
+        // Note: Ideally we want a specialized "Velocity" metric, but this is a good V1.
+        user.momentumScore = Math.floor((user.streak * 10) + (user.points / 100));
+
+        // 2. Consistency Insurance (Milestone Check)
+        // Every 7 days of global streak => +1 Token
+        if (user.streak > 0 && user.streak % 7 === 0) {
+            // Check if we already awarded for this specific milestone?
+            // For simplicity in V1, we just check if it's a multiple of 7.
+            // Problem: If they check a habit, streak is 7. Check another habit SAME DAY, streak is still 7.
+            // We need to ensure we don't double award.
+            // Solution: We should only increment User.streak ONCE per day in a separate logic, 
+            // OR we store "lastTokenAwardedStreak" in user model.
+            // FOR NOW: Let's skip auto-awarding here and rely on the Cron Job "Midnight Processor" for reliable streak counting.
+            // We will just calculate Momentum here.
+        }
+
         await user.save();
 
         await habit.save();
