@@ -8,11 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Plus, Check, Trash2, Flame, Trophy, ActivitySquare, LayoutGrid, Sparkles, Clock, Pencil, X } from 'lucide-react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 
 import CalendarView from '@/components/CalendarView';
 import WeekView from '@/components/WeekView';
 import TaskTimeline from '@/components/TaskTimeline';
 import FutureYouSimulator from '@/components/FutureYouSimulator';
+import { getDailyQuote } from '@/lib/quotes';
 
 type Habit = {
     _id: string;
@@ -58,6 +60,12 @@ export default function Dashboard() {
     const [pauseDuration, setPauseDuration] = useState('7'); // Default 7 days
     const [showSimulator, setShowSimulator] = useState(false);
     const [silentMode, setSilentMode] = useState(false); // <--- Added // <--- Added
+
+    const [dailyQuote, setDailyQuote] = useState({ text: 'Keep the fire burning!', author: '' });
+
+    useEffect(() => {
+        setDailyQuote(getDailyQuote());
+    }, []);
 
     // ... useEffect ...
 
@@ -285,12 +293,20 @@ export default function Dashboard() {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                                     <Card className={`md:col-span-2 bg-gradient-to-br ${rankColor} text-white border-none overflow-hidden relative shadow-xl shadow-orange-500/20`}>
                                         {/* Background Pattern */}
-                                        <div className="absolute top-0 right-0 p-10 opacity-20">
+                                        <motion.div
+                                            animate={{ y: [0, -10, 0], rotate: [0, 5, 0] }}
+                                            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+                                            className="absolute top-0 right-0 p-10 opacity-20"
+                                        >
                                             <Trophy size={180} />
-                                        </div>
-                                        <div className="absolute -bottom-10 -left-10 p-10 opacity-10">
+                                        </motion.div>
+                                        <motion.div
+                                            animate={{ y: [0, 10, 0], scale: [1, 1.1, 1] }}
+                                            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+                                            className="absolute -bottom-10 -left-10 p-10 opacity-10"
+                                        >
                                             <Sparkles size={120} />
-                                        </div>
+                                        </motion.div>
 
                                         <CardContent className="p-8 relative z-10 flex flex-col h-full justify-between">
                                             <div className="flex justify-between items-start mb-6">
@@ -304,8 +320,14 @@ export default function Dashboard() {
                                                             <span>Rank: {stats?.rank || 'Beginner'}</span>
                                                         </div>
                                                     </div>
-                                                    <h2 className="text-4xl font-black mb-2 tracking-tight drop-shadow-sm">Keep the fire burning!</h2>
-                                                    <p className="text-white/80 text-lg">You are unstoppable. Completing tasks earns you XP.</p>
+                                                    <motion.div
+                                                        initial={{ opacity: 0, y: 20 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        transition={{ duration: 0.5 }}
+                                                    >
+                                                        <h2 className="text-4xl font-black mb-2 tracking-tight drop-shadow-sm">{dailyQuote.text}</h2>
+                                                        <p className="text-white/80 text-lg">{dailyQuote.author ? `- ${dailyQuote.author}` : "You are unstoppable. Completing tasks earns you XP."}</p>
+                                                    </motion.div>
                                                 </div>
                                                 <div className="text-right hidden sm:block">
                                                     <div className="text-5xl font-black text-white drop-shadow-md">{stats?.xp || 0}</div>
@@ -319,12 +341,14 @@ export default function Dashboard() {
                                                     <span>{xpProgress} / 100 XP</span>
                                                 </div>
                                                 <div className="h-5 bg-black/20 rounded-full overflow-hidden backdrop-blur-sm border border-white/20 p-0.5">
-                                                    <div
-                                                        className="h-full rounded-full bg-gradient-to-r from-white/40 via-white/80 to-white/100 shadow-[0_0_15px_rgba(255,255,255,0.4)] relative overflow-hidden transition-all duration-1000 ease-out"
-                                                        style={{ width: `${xpProgress}%` }}
+                                                    <motion.div
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${xpProgress}%` }}
+                                                        transition={{ duration: 1.5, ease: "easeOut" }}
+                                                        className="h-full rounded-full bg-gradient-to-r from-white/40 via-white/80 to-white/100 shadow-[0_0_15px_rgba(255,255,255,0.4)] relative overflow-hidden"
                                                     >
                                                         <div className="absolute inset-0 bg-white/30 animate-pulse"></div>
-                                                    </div>
+                                                    </motion.div>
                                                 </div>
                                             </div>
                                         </CardContent>
