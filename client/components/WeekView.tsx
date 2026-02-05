@@ -18,6 +18,8 @@ import { motion } from 'framer-motion';
 type WeekViewProps = {
     habits: any[];
     onToggle: (habitId: string) => void;
+    selectedDate?: Date;
+    onSelectDate?: (date: Date) => void;
 };
 
 // Vibrant color palette matching the requested design
@@ -45,7 +47,7 @@ const getHabitIcon = (title: string) => {
     return '✨'; // Default
 };
 
-export default function WeekView({ habits, onToggle }: WeekViewProps) {
+export default function WeekView({ habits, onToggle, selectedDate, onSelectDate }: WeekViewProps) {
     const [currentDate, setCurrentDate] = useState(new Date());
 
     const startDate = startOfWeek(currentDate);
@@ -73,16 +75,36 @@ export default function WeekView({ habits, onToggle }: WeekViewProps) {
                 {/* Day Headers - Hidden on mobile as they are clearer in the grid context or could be added above columns if really needed, 
                     but sticking to the existing design, we make this grid responsive */}
                 <div className="flex-1 grid grid-cols-7 gap-2 md:gap-4 md:ml-4 max-w-2xl text-[10px] md:text-sm">
-                    {days.map(day => (
-                        <div key={day.toString()} className="text-center">
-                            <span className={cn(
-                                "font-medium",
-                                isSameDay(day, new Date()) ? "text-slate-800" : "text-slate-400"
-                            )}>
-                                {format(day, 'EEE')}
-                            </span>
-                        </div>
-                    ))}
+                    {days.map(day => {
+                        const isSelected = selectedDate && isSameDay(day, selectedDate);
+                        const isToday = isSameDay(day, new Date());
+
+                        return (
+                            <div
+                                key={day.toString()}
+                                className={cn(
+                                    "text-center rounded-lg py-2 transition-all cursor-pointer hover:bg-slate-100",
+                                    isSelected ? "bg-indigo-100 ring-2 ring-indigo-500 ring-offset-1" : ""
+                                )}
+                                onClick={() => onSelectDate?.(day)}
+                            >
+                                <span className={cn(
+                                    "font-medium block",
+                                    isToday ? "text-indigo-600 font-bold" : "text-slate-500",
+                                    isSelected && "text-indigo-700"
+                                )}>
+                                    {format(day, 'EEE')}
+                                </span>
+                                <span className={cn(
+                                    "text-xs block",
+                                    isToday ? "text-indigo-600/80" : "text-slate-400",
+                                    isSelected && "text-indigo-700/80"
+                                )}>
+                                    {format(day, 'd')}
+                                </span>
+                            </div>
+                        );
+                    })}
                 </div>
                 <div className="hidden md:block w-12"></div> {/* Spacer for alignment */}
             </div>

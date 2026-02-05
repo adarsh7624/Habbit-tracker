@@ -34,6 +34,7 @@ const taskRoutes = require('./routes/tasks');
 const plannerRoutes = require('./routes/planner');
 const coachRoutes = require('./routes/coach');
 const analyticsRoutes = require('./routes/analytics');
+const noteRoutes = require('./routes/notes');
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -43,6 +44,7 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/planner', plannerRoutes);
 app.use('/api/coach', coachRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/notes', noteRoutes);
 app.use('/api/reports', require('./middleware/auth'), require('./routes/reports'));
 
 

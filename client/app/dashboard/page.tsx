@@ -5,6 +5,7 @@ import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { Plus, Check, Trash2, Flame, Trophy, ActivitySquare, LayoutGrid, Sparkles, Clock, Pencil, X } from 'lucide-react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
@@ -24,7 +25,9 @@ type Habit = {
     // Streak logic needs history
     streak: number;
     history: { date: string; status: string }[];
-    endDate?: string; // <--- Added optional endDate
+    frequencyDays?: string[]; // Optional for backward compatibility
+    startDate?: string;
+    endDate?: string;
 };
 
 type Task = {
@@ -59,7 +62,17 @@ export default function Dashboard() {
     const [showPauseModal, setShowPauseModal] = useState(false);
     const [pauseDuration, setPauseDuration] = useState('7'); // Default 7 days
     const [showSimulator, setShowSimulator] = useState(false);
-    const [silentMode, setSilentMode] = useState(false); // <--- Added // <--- Added
+
+    const [silentMode, setSilentMode] = useState(false);
+    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+    const [showAllHabits, setShowAllHabits] = useState(false);
+    const [frequency, setFrequency] = useState('daily');
+    const [frequencyDays, setFrequencyDays] = useState<string[]>([]);
+    const [monthlyDay, setMonthlyDay] = useState<string>('1');
+
+    // Task Repetition State
+    const [taskRepeat, setTaskRepeat] = useState<'none' | 'weekly' | 'monthly'>('none');
+    const [taskRepeatDuration, setTaskRepeatDuration] = useState('1'); // Months
 
     const [dailyQuote, setDailyQuote] = useState({ text: 'Keep the fire burning!', author: '' });
 
@@ -74,15 +87,50 @@ export default function Dashboard() {
         if (!newTaskDetails.title || !newTaskDetails.date) return alert('Please provide a title and date');
 
         try {
-            await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/tasks`, {
-                title: newTaskDetails.title,
-                date: newTaskDetails.date,
-                difficulty: newTaskDetails.difficulty,
-                category: category || 'Work', // Default to current category selection or 'Work'
-                duration: 'Flexible'
-            }, { headers: { Authorization: `Bearer ${token}` } });
+            if (taskRepeat === 'none') {
+                // Single Task
+                await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/tasks`, {
+                    title: newTaskDetails.title,
+                    date: newTaskDetails.date,
+                    difficulty: newTaskDetails.difficulty,
+                    category: category || 'Work',
+                    duration: 'Flexible'
+                }, { headers: { Authorization: `Bearer ${token}` } });
+            } else {
+                // Bulk Generation
+                const tasksToCreate = [];
+                const startDate = new Date(newTaskDetails.date);
+                const durationMonths = parseInt(taskRepeatDuration);
+                const endDate = new Date(startDate);
+                endDate.setMonth(endDate.getMonth() + durationMonths);
 
-            setNewTaskDetails({ ...newTaskDetails, title: '' }); // Keep date/difficulty?
+                let currentDate = new Date(startDate);
+
+                while (currentDate <= endDate) {
+                    tasksToCreate.push({
+                        title: newTaskDetails.title,
+                        date: currentDate.toISOString().split('T')[0],
+                        difficulty: newTaskDetails.difficulty,
+                        category: category || 'Work',
+                        duration: 'Flexible'
+                    });
+
+                    // Advance Date
+                    if (taskRepeat === 'weekly') {
+                        currentDate.setDate(currentDate.getDate() + 7);
+                    } else if (taskRepeat === 'monthly') {
+                        currentDate.setMonth(currentDate.getMonth() + 1);
+                    }
+                }
+
+                await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/tasks/bulk`,
+                    { tasks: tasksToCreate },
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+            }
+
+            setNewTaskDetails({ ...newTaskDetails, title: '' });
+            setTaskRepeat('none'); // Reset
             if (token) fetchData(token);
         } catch (error) {
             console.error(error);
@@ -152,12 +200,25 @@ export default function Dashboard() {
                 endDate = date.toISOString();
             }
 
+            let finalFrequencyDays = frequencyDays;
+            if (frequency === 'monthly') {
+                finalFrequencyDays = [monthlyDay];
+            }
+
             await axios.post(
                 `${process.env.NEXT_PUBLIC_API_URL}/api/habits`,
-                { title: newHabit, category, endDate },
+                {
+                    title: newHabit,
+                    category,
+                    endDate,
+                    frequency,
+                    frequencyDays: finalFrequencyDays
+                },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             setNewHabit('');
+            setFrequency('daily');
+            setFrequencyDays([]);
             if (token) fetchData(token);
         } catch (error) {
             console.error(error);
@@ -518,6 +579,44 @@ export default function Dashboard() {
                                                         className="bg-muted/30 border-none shadow-inner w-full"
                                                         min={new Date().toISOString().split('T')[0]} // Min today
                                                     />
+                                                    {/* Quick Date Shortcuts */}
+                                                    <select
+                                                        className="h-10 rounded-md bg-indigo-50 text-indigo-700 font-bold px-2 py-2 text-xs w-[100px] border border-indigo-100 focus:outline-none"
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            if (!val) return;
+                                                            const today = new Date();
+                                                            let target = new Date();
+
+                                                            if (val === 'tomorrow') {
+                                                                target.setDate(today.getDate() + 1);
+                                                            } else if (val === 'next_monday') {
+                                                                target.setDate(today.getDate() + ((1 + 7 - today.getDay()) % 7));
+                                                                if (target <= today) target.setDate(target.getDate() + 7);
+                                                            } else if (val === 'next_sunday') {
+                                                                target.setDate(today.getDate() + ((0 + 7 - today.getDay()) % 7));
+                                                                if (target <= today) target.setDate(target.getDate() + 7);
+                                                            } else if (val === '1st_next_month') {
+                                                                target = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+                                                            } else if (val.startsWith('day_')) {
+                                                                const d = parseInt(val.split('_')[1]);
+                                                                target.setDate(d);
+                                                                if (target < today) {
+                                                                    target.setMonth(target.getMonth() + 1);
+                                                                }
+                                                            }
+                                                            setNewTaskDetails({ ...newTaskDetails, date: target.toISOString().split('T')[0] });
+                                                        }}
+                                                        value=""
+                                                    >
+                                                        <option value="" disabled>⚡ Quick</option>
+                                                        <option value="tomorrow">Tomorrow</option>
+                                                        <option value="next_monday">Next Mon</option>
+                                                        <option value="next_sunday">Next Sun</option>
+                                                        <option value="1st_next_month">1st of Month</option>
+                                                        <option value="day_15">15th</option>
+                                                        <option value="day_25">25th</option>
+                                                    </select>
                                                     <select
                                                         className="h-10 rounded-md bg-muted/50 px-3 py-2 text-sm w-[120px]"
                                                         value={newTaskDetails.difficulty}
@@ -528,9 +627,33 @@ export default function Dashboard() {
                                                         <option value="hard">Hard</option>
                                                     </select>
                                                 </div>
+
+                                                {/* Task Recurrence Options */}
+                                                <div className="flex gap-2">
+                                                    <select
+                                                        className="h-10 rounded-md bg-orange-50 text-orange-800 font-medium px-3 py-2 text-sm border border-orange-100 focus:outline-none w-full"
+                                                        value={taskRepeat}
+                                                        onChange={(e) => setTaskRepeat(e.target.value as any)}
+                                                    >
+                                                        <option value="none">One-time</option>
+                                                        <option value="weekly">🔁 Weekly</option>
+                                                        <option value="monthly">📅 Monthly</option>
+                                                    </select>
+                                                    {taskRepeat !== 'none' && (
+                                                        <select
+                                                            className="h-10 rounded-md bg-orange-50 text-orange-800 font-medium px-3 py-2 text-sm border border-orange-100 focus:outline-none w-full"
+                                                            value={taskRepeatDuration}
+                                                            onChange={(e) => setTaskRepeatDuration(e.target.value)}
+                                                        >
+                                                            <option value="1">For 1 Month</option>
+                                                            <option value="3">For 3 Months</option>
+                                                            <option value="6">For 6 Months</option>
+                                                        </select>
+                                                    )}
+                                                </div>
                                             </div>
                                             <Button type="submit" className="px-6 font-semibold shadow-lg shadow-blue-500/20 bg-blue-600 hover:bg-blue-700">
-                                                <Plus className="h-4 w-4 mr-2" /> Schedule
+                                                <Plus className="h-4 w-4 mr-2" /> {taskRepeat !== 'none' ? 'Schedule All' : 'Schedule'}
                                             </Button>
                                         </form>
                                     )}
@@ -564,120 +687,188 @@ export default function Dashboard() {
                         </div>
 
                         {viewMode === 'monthly' && <CalendarView habits={habits} />}
-                        {viewMode === 'weekly' && <WeekView habits={habits} onToggle={toggleHabit} />}
+                        {viewMode === 'weekly' && (
+                            <div className="space-y-8">
+                                <WeekView
+                                    habits={habits}
+                                    onToggle={toggleHabit}
+                                    selectedDate={selectedDate}
+                                    onSelectDate={setSelectedDate}
+                                />
+                            </div>
+                        )}
 
                         {viewMode === 'daily' && (
                             <div className="grid gap-8">
-                                {/* Task Timeline from AI Planner */}
-                                {tasks.length > 0 && (
-                                    <TaskTimeline tasks={tasks} onToggle={toggleTask} />
-                                )}
+                                <div className="">
+                                    <div className="space-y-8">
+                                        {/* Task Timeline from AI Planner */}
+                                        {tasks.length > 0 && (
+                                            <TaskTimeline tasks={tasks} onToggle={toggleTask} />
+                                        )}
 
-                                {/* Recurring Habits */}
-                                <div>
-                                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                                        <LayoutGrid size={20} className="text-primary" />
-                                        Recurring Habits
-                                    </h3>
-                                    {habits.length === 0 ? (
-                                        <p className="text-muted-foreground">No recurring habits set.</p>
-                                    ) : (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                            {habits.map((habit) => {
-                                                const status = getTodayStatus(habit.history);
-                                                const finished = status === 'completed';
-                                                const partial = status === 'partial';
+                                        {/* Recurring Habits */}
+                                        <div>
+                                            <div className="flex items-center justify-between mb-4">
+                                                <h3 className="text-lg font-semibold flex items-center gap-2">
+                                                    <LayoutGrid size={20} className="text-primary" />
+                                                    Recurring Habits
+                                                </h3>
+                                                <div className="flex items-center space-x-2">
+                                                    <label className="text-xs text-muted-foreground font-medium cursor-pointer" htmlFor="show-all-mode">
+                                                        {showAllHabits ? 'Showing All' : 'Due Today Only'}
+                                                    </label>
+                                                    <Switch
+                                                        id="show-all-mode"
+                                                        checked={showAllHabits}
+                                                        onCheckedChange={setShowAllHabits}
+                                                    />
+                                                </div>
+                                            </div>
+                                            {habits.length === 0 ? (
+                                                <p className="text-muted-foreground">No recurring habits set.</p>
+                                            ) : (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                    {habits.filter(habit => {
+                                                        if (showAllHabits) return true;
 
-                                                // Calculate time left (Client-side only)
-                                                let timeDisplay = null;
-                                                let isUrgent = false;
+                                                        // "Smart Recurrence" Filtering Logic
+                                                        if (!habit.frequency || habit.frequency === 'daily') return true;
 
-                                                if (currentTime) {
-                                                    const endOfDay = new Date(currentTime);
-                                                    endOfDay.setHours(23, 59, 59, 999);
-                                                    const diff = endOfDay.getTime() - currentTime.getTime();
-                                                    const hoursLeft = Math.floor(diff / (1000 * 60 * 60));
-                                                    const minutesLeft = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                                                        // Use selectedDate if available (for browsing past/future), otherwise today
+                                                        const targetDate = selectedDate || currentTime || new Date();
+                                                        const dayName = targetDate.toLocaleDateString('en-US', { weekday: 'short' }); // "Mon"
+                                                        const dayNum = targetDate.getDate().toString(); // "15"
 
-                                                    isUrgent = hoursLeft < 4;
-                                                    timeDisplay = `${hoursLeft}h ${minutesLeft}m left`;
-                                                }
+                                                        if (habit.frequency === 'specific_days') {
+                                                            return habit.frequencyDays?.includes(dayName);
+                                                        }
+                                                        if (habit.frequency === 'monthly') {
+                                                            return habit.frequencyDays?.includes(dayNum);
+                                                        }
+                                                        if (habit.frequency === 'biweekly') {
+                                                            // Simplified bi-weekly check: Every even week number?
+                                                            // Or check days since start date % 14?
+                                                            // Let's go with exact 14-day modulo from start date.
+                                                            if (!habit.startDate) return true; // Fallback
+                                                            const start = new Date(habit.startDate);
+                                                            start.setHours(0, 0, 0, 0);
+                                                            const current = new Date(targetDate);
+                                                            current.setHours(0, 0, 0, 0);
+                                                            const diffDays = Math.floor((current.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+                                                            return diffDays >= 0 && diffDays % 14 === 0;
+                                                        }
+                                                        return true;
+                                                    }).map((habit) => {
+                                                        // ... habit items ...
+                                                        const status = getTodayStatus(habit.history);
+                                                        const finished = status === 'completed';
+                                                        const partial = status === 'partial';
 
-                                                return (
-                                                    <Card key={habit._id} className={`group hover:shadow-lg transition-all duration-300 ${finished ? 'bg-green-50/50 dark:bg-green-900/10 border-green-200' :
-                                                        partial ? 'bg-yellow-50/50 border-yellow-200' :
-                                                            'hover:border-primary/50'
-                                                        }`}>
-                                                        <CardContent className="p-5">
-                                                            <div className="flex justify-between items-start mb-4">
-                                                                <div>
-                                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-secondary px-2 py-1 rounded-full">
-                                                                        {habit.category}
-                                                                    </span>
-                                                                    <h3 className={`font-bold text-lg mt-2 ${finished ? 'text-muted-foreground line-through decoration-green-500/50' : partial ? 'text-yellow-700' : ''}`}>
-                                                                        {habit.title}
-                                                                    </h3>
-                                                                    {partial && <span className="text-[10px] font-bold text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded-full">PARTIAL WIN</span>}
-                                                                </div>
-                                                                <div className="flex gap-2">
-                                                                    {/* Partial Button - Only show if pending */}
-                                                                    {!finished && !partial && (
-                                                                        <button
-                                                                            onClick={() => toggleHabit(habit._id, 'partial', 50)}
-                                                                            title="Partial Win (50%)"
-                                                                            className="h-10 w-10 rounded-xl flex items-center justify-center transition-all duration-300 bg-yellow-50 text-yellow-600 hover:bg-yellow-200 hover:scale-105"
-                                                                        >
-                                                                            <div className="h-4 w-4 rounded-full border-2 border-current border-t-transparent" />
-                                                                        </button>
-                                                                    )}
+                                                        // Calculate time left (Client-side only)
+                                                        let timeDisplay = null;
+                                                        let isUrgent = false;
 
-                                                                    {/* Complete Button */}
-                                                                    <button
-                                                                        onClick={() => toggleHabit(habit._id, 'completed')}
-                                                                        className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all duration-500 ${finished
-                                                                            ? 'bg-green-500 text-white shadow-green-500/30 shadow-lg scale-110'
-                                                                            : partial
-                                                                                ? 'bg-yellow-500 text-white shadow-yellow-500/30'
-                                                                                : 'bg-muted hover:bg-primary hover:text-white'
-                                                                            }`}
-                                                                    >
-                                                                        {finished ? <Check className="h-6 w-6" /> : partial ? <span className="font-bold text-xs">50%</span> : <div className="h-4 w-4 rounded-full border-2 border-current" />}
-                                                                    </button>
-                                                                </div>
-                                                            </div>
+                                                        if (currentTime) {
+                                                            const endOfDay = new Date(currentTime);
+                                                            endOfDay.setHours(23, 59, 59, 999);
+                                                            const diff = endOfDay.getTime() - currentTime.getTime();
+                                                            const hoursLeft = Math.floor(diff / (1000 * 60 * 60));
+                                                            const minutesLeft = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-                                                            <div className="flex items-center justify-between mt-6 pt-4 border-t border-dashed border-muted-foreground/20">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="flex items-center text-xs font-medium text-orange-500 bg-orange-50 dark:bg-orange-900/10 px-2 py-1 rounded">
-                                                                        <Flame className="h-3 w-3 mr-1" />
-                                                                        {habit.streak} day streak
-                                                                    </div>
-                                                                    {!finished && !partial && timeDisplay && (
-                                                                        <div className={`flex items-center text-xs font-semibold px-2 py-1 rounded ${isUrgent ? 'bg-red-50 text-red-600 animate-pulse' : 'bg-blue-50 text-blue-600'}`}>
-                                                                            <Clock className="h-3 w-3 mr-1" />
-                                                                            {timeDisplay}
+                                                            isUrgent = hoursLeft < 4;
+                                                            timeDisplay = `${hoursLeft}h ${minutesLeft}m left`;
+                                                        }
+
+                                                        return (
+                                                            <Card key={habit._id} className={`group hover:shadow-lg transition-all duration-300 ${finished ? 'bg-green-50/50 dark:bg-green-900/10 border-green-200' :
+                                                                partial ? 'bg-yellow-50/50 border-yellow-200' :
+                                                                    'hover:border-primary/50'
+                                                                }`}>
+                                                                <CardContent className="p-5">
+                                                                    <div className="flex justify-between items-start mb-4">
+                                                                        <div>
+                                                                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-secondary px-2 py-1 rounded-full">
+                                                                                {habit.category}
+                                                                            </span>
+                                                                            {habit.frequency === 'specific_days' && (
+                                                                                <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">
+                                                                                    {habit.frequencyDays?.join(', ')}
+                                                                                </span>
+                                                                            )}
+                                                                            {habit.frequency === 'monthly' && (
+                                                                                <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-purple-600 bg-purple-50 px-2 py-1 rounded-full">
+                                                                                    Monthly: {habit.frequencyDays?.[0]}
+                                                                                </span>
+                                                                            )}
+                                                                            <h3 className={`font-bold text-lg mt-2 ${finished ? 'text-muted-foreground line-through decoration-green-500/50' : partial ? 'text-yellow-700' : ''}`}>
+                                                                                {habit.title}
+                                                                            </h3>
+                                                                            {partial && <span className="text-[10px] font-bold text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded-full">PARTIAL WIN</span>}
                                                                         </div>
-                                                                    )}
-                                                                </div>
+                                                                        <div className="flex gap-2">
+                                                                            {/* Partial Button - Only show if pending */}
+                                                                            {!finished && !partial && (
+                                                                                <button
+                                                                                    onClick={() => toggleHabit(habit._id, 'partial', 50)}
+                                                                                    title="Partial Win (50%)"
+                                                                                    className="h-10 w-10 rounded-xl flex items-center justify-center transition-all duration-300 bg-yellow-50 text-yellow-600 hover:bg-yellow-200 hover:scale-105"
+                                                                                >
+                                                                                    <div className="h-4 w-4 rounded-full border-2 border-current border-t-transparent" />
+                                                                                </button>
+                                                                            )}
 
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    onClick={() => setEditHabit(habit)}
-                                                                    className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 -mr-2"
-                                                                >
-                                                                    <Pencil className="h-4 w-4" />
-                                                                </Button>
-                                                            </div>
-                                                        </CardContent>
-                                                    </Card>
-                                                );
-                                            })}
+                                                                            {/* Complete Button */}
+                                                                            <button
+                                                                                onClick={() => toggleHabit(habit._id, 'completed')}
+                                                                                className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all duration-500 ${finished
+                                                                                    ? 'bg-green-500 text-white shadow-green-500/30 shadow-lg scale-110'
+                                                                                    : partial
+                                                                                        ? 'bg-yellow-500 text-white shadow-yellow-500/30'
+                                                                                        : 'bg-muted hover:bg-primary hover:text-white'
+                                                                                    }`}
+                                                                            >
+                                                                                {finished ? <Check className="h-6 w-6" /> : partial ? <span className="font-bold text-xs">50%</span> : <div className="h-4 w-4 rounded-full border-2 border-current" />}
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div className="flex items-center justify-between mt-6 pt-4 border-t border-dashed border-muted-foreground/20">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className="flex items-center text-xs font-medium text-orange-500 bg-orange-50 dark:bg-orange-900/10 px-2 py-1 rounded">
+                                                                                <Flame className="h-3 w-3 mr-1" />
+                                                                                {habit.streak} streak
+                                                                            </div>
+                                                                            {!finished && !partial && timeDisplay && (
+                                                                                <div className={`flex items-center text-xs font-semibold px-2 py-1 rounded ${isUrgent ? 'bg-red-50 text-red-600 animate-pulse' : 'bg-blue-50 text-blue-600'}`}>
+                                                                                    <Clock className="h-3 w-3 mr-1" />
+                                                                                    {timeDisplay}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            onClick={() => setEditHabit(habit)}
+                                                                            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 -mr-2"
+                                                                        >
+                                                                            <Pencil className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </div>
+                                                                </CardContent>
+                                                            </Card>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
+                                    </div>
+
                                 </div>
                             </div>
                         )}
+
                         {/* WhatsApp Notification Settings */}
                         <div className="mt-12 mb-8">
                             <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
@@ -769,158 +960,162 @@ export default function Dashboard() {
                         </div>
 
                         {/* Pause Duration Modal */}
-                        {showPauseModal && (
-                            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                                <Card className="w-full max-w-sm bg-white shadow-2xl">
-                                    <CardContent className="p-6">
-                                        <h3 className="text-xl font-bold mb-4">Pause Life Mode</h3>
-                                        <p className="text-sm text-muted-foreground mb-4">How long are you going on vacation? We will auto-resume tracking after this period.</p>
+                        {
+                            showPauseModal && (
+                                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                                    <Card className="w-full max-w-sm bg-white shadow-2xl">
+                                        <CardContent className="p-6">
+                                            <h3 className="text-xl font-bold mb-4">Pause Life Mode</h3>
+                                            <p className="text-sm text-muted-foreground mb-4">How long are you going on vacation? We will auto-resume tracking after this period.</p>
 
-                                        <div className="space-y-4">
-                                            <select
-                                                className="w-full h-10 rounded-md border border-input bg-background px-3"
-                                                value={pauseDuration}
-                                                onChange={(e) => setPauseDuration(e.target.value)}
-                                            >
-                                                <option value="1">1 Day</option>
-                                                <option value="3">3 Days</option>
-                                                <option value="7">1 Week</option>
-                                                <option value="14">2 Weeks</option>
-                                                <option value="30">1 Month</option>
-                                                <option value="90">3 Months</option>
-                                            </select>
+                                            <div className="space-y-4">
+                                                <select
+                                                    className="w-full h-10 rounded-md border border-input bg-background px-3"
+                                                    value={pauseDuration}
+                                                    onChange={(e) => setPauseDuration(e.target.value)}
+                                                >
+                                                    <option value="1">1 Day</option>
+                                                    <option value="3">3 Days</option>
+                                                    <option value="7">1 Week</option>
+                                                    <option value="14">2 Weeks</option>
+                                                    <option value="30">1 Month</option>
+                                                    <option value="90">3 Months</option>
+                                                </select>
 
-                                            <div className="flex gap-2">
-                                                <Button
-                                                    variant="ghost"
-                                                    className="flex-1"
-                                                    onClick={() => setShowPauseModal(false)}
-                                                >
-                                                    Cancel
-                                                </Button>
-                                                <Button
-                                                    className="flex-1"
-                                                    onClick={async () => {
-                                                        setIsPaused(true);
-                                                        setShowPauseModal(false);
-                                                        try {
-                                                            await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/profile`, {
-                                                                isPaused: true,
-                                                                pauseDuration: parseInt(pauseDuration)
-                                                            }, {
-                                                                headers: { Authorization: `Bearer ${token}` }
-                                                            });
-                                                        } catch (err) { console.error(err); setIsPaused(false); }
-                                                    }}
-                                                >
-                                                    Confirm Pause
-                                                </Button>
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        className="flex-1"
+                                                        onClick={() => setShowPauseModal(false)}
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                    <Button
+                                                        className="flex-1"
+                                                        onClick={async () => {
+                                                            setIsPaused(true);
+                                                            setShowPauseModal(false);
+                                                            try {
+                                                                await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/profile`, {
+                                                                    isPaused: true,
+                                                                    pauseDuration: parseInt(pauseDuration)
+                                                                }, {
+                                                                    headers: { Authorization: `Bearer ${token}` }
+                                                                });
+                                                            } catch (err) { console.error(err); setIsPaused(false); }
+                                                        }}
+                                                    >
+                                                        Confirm Pause
+                                                    </Button>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        )}
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            )
+                        }
 
 
                         {/* Edit Habit Modal */}
-                        {editHabit && (
-                            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                                <Card className="w-full max-w-md bg-white shadow-2xl">
-                                    <CardContent className="p-6">
-                                        <div className="flex justify-between items-center mb-6">
-                                            <h3 className="text-xl font-bold">Edit Habit</h3>
-                                            <button onClick={() => setEditHabit(null)} className="text-muted-foreground hover:text-black">
-                                                <X className="h-5 w-5" />
-                                            </button>
-                                        </div>
-
-                                        <div className="space-y-4">
-                                            <div>
-                                                <label className="text-sm font-medium text-muted-foreground mb-1 block">Title</label>
-                                                <Input
-                                                    value={editHabit.title}
-                                                    onChange={(e) => setEditHabit({ ...editHabit, title: e.target.value })}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="text-sm font-medium text-muted-foreground mb-1 block">Category</label>
-                                                <select
-                                                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                                    value={editHabit.category}
-                                                    onChange={(e) => setEditHabit({ ...editHabit, category: e.target.value })}
-                                                >
-                                                    <option>Health</option>
-                                                    <option>Study</option>
-                                                    <option>Fitness</option>
-                                                    <option>Mindset</option>
-                                                    <option>Work</option>
-                                                </select>
+                        {
+                            editHabit && (
+                                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                                    <Card className="w-full max-w-md bg-white shadow-2xl">
+                                        <CardContent className="p-6">
+                                            <div className="flex justify-between items-center mb-6">
+                                                <h3 className="text-xl font-bold">Edit Habit</h3>
+                                                <button onClick={() => setEditHabit(null)} className="text-muted-foreground hover:text-black">
+                                                    <X className="h-5 w-5" />
+                                                </button>
                                             </div>
 
-                                            <div>
-                                                <label className="text-sm font-medium text-muted-foreground mb-1 block">Commitment End Date (Duration)</label>
-                                                <div className="flex gap-2">
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="text-sm font-medium text-muted-foreground mb-1 block">Title</label>
                                                     <Input
-                                                        type="date"
-                                                        value={editHabit.endDate ? new Date(editHabit.endDate).toISOString().split('T')[0] : ''}
-                                                        onChange={(e) => setEditHabit({ ...editHabit, endDate: e.target.value })}
+                                                        value={editHabit.title}
+                                                        onChange={(e) => setEditHabit({ ...editHabit, title: e.target.value })}
                                                     />
+                                                </div>
+                                                <div>
+                                                    <label className="text-sm font-medium text-muted-foreground mb-1 block">Category</label>
+                                                    <select
+                                                        className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                                        value={editHabit.category}
+                                                        onChange={(e) => setEditHabit({ ...editHabit, category: e.target.value })}
+                                                    >
+                                                        <option>Health</option>
+                                                        <option>Study</option>
+                                                        <option>Fitness</option>
+                                                        <option>Mindset</option>
+                                                        <option>Work</option>
+                                                    </select>
+                                                </div>
+
+                                                <div>
+                                                    <label className="text-sm font-medium text-muted-foreground mb-1 block">Commitment End Date (Duration)</label>
+                                                    <div className="flex gap-2">
+                                                        <Input
+                                                            type="date"
+                                                            value={editHabit.endDate ? new Date(editHabit.endDate).toISOString().split('T')[0] : ''}
+                                                            onChange={(e) => setEditHabit({ ...editHabit, endDate: e.target.value })}
+                                                        />
+                                                        <Button
+                                                            variant="outline"
+                                                            onClick={() => {
+                                                                // Quick add 30 days logic for easier editing
+                                                                const current = editHabit.endDate ? new Date(editHabit.endDate) : new Date();
+                                                                current.setDate(current.getDate() + 30);
+                                                                setEditHabit({ ...editHabit, endDate: current.toISOString() });
+                                                            }}
+                                                        >
+                                                            +30d
+                                                        </Button>
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground mt-1">Extend or shorten your commitment.</p>
+                                                </div>
+
+                                                <div className="flex gap-3 pt-4 border-t mt-6">
                                                     <Button
-                                                        variant="outline"
+                                                        variant="destructive"
+                                                        className="flex-1"
                                                         onClick={() => {
-                                                            // Quick add 30 days logic for easier editing
-                                                            const current = editHabit.endDate ? new Date(editHabit.endDate) : new Date();
-                                                            current.setDate(current.getDate() + 30);
-                                                            setEditHabit({ ...editHabit, endDate: current.toISOString() });
+                                                            deleteHabit(editHabit._id);
+                                                            setEditHabit(null);
                                                         }}
                                                     >
-                                                        +30d
+                                                        <Trash2 className="h-4 w-4 mr-2" /> Delete
+                                                    </Button>
+                                                    <Button
+                                                        className="flex-1"
+                                                        onClick={async () => {
+                                                            try {
+                                                                await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/habits/${editHabit._id}`,
+                                                                    {
+                                                                        title: editHabit.title,
+                                                                        category: editHabit.category,
+                                                                        endDate: editHabit.endDate
+                                                                    },
+                                                                    { headers: { Authorization: `Bearer ${token}` } }
+                                                                );
+                                                                setEditHabit(null);
+                                                                if (token) fetchData(token);
+                                                            } catch (e) { console.error(e); alert("Failed to save changes"); }
+                                                        }}
+                                                    >
+                                                        Save Changes
                                                     </Button>
                                                 </div>
-                                                <p className="text-xs text-muted-foreground mt-1">Extend or shorten your commitment.</p>
                                             </div>
-
-                                            <div className="flex gap-3 pt-4 border-t mt-6">
-                                                <Button
-                                                    variant="destructive"
-                                                    className="flex-1"
-                                                    onClick={() => {
-                                                        deleteHabit(editHabit._id);
-                                                        setEditHabit(null);
-                                                    }}
-                                                >
-                                                    <Trash2 className="h-4 w-4 mr-2" /> Delete
-                                                </Button>
-                                                <Button
-                                                    className="flex-1"
-                                                    onClick={async () => {
-                                                        try {
-                                                            await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/habits/${editHabit._id}`,
-                                                                {
-                                                                    title: editHabit.title,
-                                                                    category: editHabit.category,
-                                                                    endDate: editHabit.endDate
-                                                                },
-                                                                { headers: { Authorization: `Bearer ${token}` } }
-                                                            );
-                                                            setEditHabit(null);
-                                                            if (token) fetchData(token);
-                                                        } catch (e) { console.error(e); alert("Failed to save changes"); }
-                                                    }}
-                                                >
-                                                    Save Changes
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        )}
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            )
+                        }
                     </>
                 )}
-            </main>
-        </div>
+            </main >
+        </div >
     );
 }
 
