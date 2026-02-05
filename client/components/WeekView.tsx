@@ -56,10 +56,10 @@ export default function WeekView({ habits, onToggle }: WeekViewProps) {
     const prevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
 
     return (
-        <div className="bg-white/50 backdrop-blur-sm rounded-3xl p-8 shadow-sm">
+        <div className="bg-white/50 backdrop-blur-sm rounded-3xl p-4 md:p-8 shadow-sm">
             {/* Header */}
-            <div className="flex items-center justify-between mb-8">
-                <div className="flex gap-2">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+                <div className="flex gap-2 justify-between md:justify-start w-full md:w-auto">
                     <Button variant="ghost" size="icon" onClick={prevWeek} className="hover:bg-transparent">
                         <ChevronLeft className="h-5 w-5 text-slate-400" />
                     </Button>
@@ -70,12 +70,13 @@ export default function WeekView({ habits, onToggle }: WeekViewProps) {
                         <ChevronRight className="h-5 w-5 text-slate-400" />
                     </Button>
                 </div>
-                {/* Day Headers */}
-                <div className="flex-1 grid grid-cols-7 gap-4 ml-4 max-w-2xl">
+                {/* Day Headers - Hidden on mobile as they are clearer in the grid context or could be added above columns if really needed, 
+                    but sticking to the existing design, we make this grid responsive */}
+                <div className="flex-1 grid grid-cols-7 gap-2 md:gap-4 md:ml-4 max-w-2xl text-[10px] md:text-sm">
                     {days.map(day => (
                         <div key={day.toString()} className="text-center">
                             <span className={cn(
-                                "text-sm font-medium",
+                                "font-medium",
                                 isSameDay(day, new Date()) ? "text-slate-800" : "text-slate-400"
                             )}>
                                 {format(day, 'EEE')}
@@ -83,7 +84,7 @@ export default function WeekView({ habits, onToggle }: WeekViewProps) {
                         </div>
                     ))}
                 </div>
-                <div className="w-12"></div> {/* Spacer for alignment */}
+                <div className="hidden md:block w-12"></div> {/* Spacer for alignment */}
             </div>
 
             {/* Habits Matrix */}
@@ -106,23 +107,24 @@ export default function WeekView({ habits, onToggle }: WeekViewProps) {
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: index * 0.05 }}
-                            className="flex items-center justify-between group"
+                            className="flex flex-col md:flex-row md:items-center justify-between group gap-4 md:gap-0"
                         >
                             {/* Left: Habit Name */}
-                            <div className="flex items-center gap-4 w-[200px] shrink-0">
-                                <div className={cn("w-3 h-3 rounded-full", colorTheme.bg)}></div>
-                                <span className="text-lg mr-2">{icon}</span>
-                                <span className="text-slate-600 font-medium truncate">{habit.title}</span>
+                            <div className="flex items-center gap-3 md:gap-4 w-full md:w-[200px] shrink-0">
+                                <div className={cn("w-2 h-2 md:w-3 md:h-3 rounded-full shrink-0", colorTheme.bg)}></div>
+                                <span className="text-base md:text-lg mr-1">{icon}</span>
+                                <span className="text-slate-600 font-medium truncate flex-1">{habit.title}</span>
+                                {/* Mobile Progress shown here to save space */}
+                                <span className="md:hidden text-slate-400 font-medium text-xs">{weeklyCompletions} / 7</span>
                             </div>
 
                             {/* Middle: Grid */}
-                            <div className="flex-1 grid grid-cols-7 gap-4 max-w-2xl">
+                            <div className="flex-1 grid grid-cols-7 gap-2 md:gap-4 max-w-2xl">
                                 {days.map(day => {
                                     const isCompleted = habit.history?.some((h: any) =>
                                         isSameDay(new Date(h.date), day) && h.status === 'completed'
                                     );
                                     const isToday = isSameDay(day, new Date());
-                                    const isFuture = day > new Date();
 
                                     return (
                                         <div key={day.toString()} className="flex justify-center">
@@ -131,7 +133,7 @@ export default function WeekView({ habits, onToggle }: WeekViewProps) {
                                                 onClick={() => isToday && onToggle(habit._id)}
                                                 disabled={!isToday}
                                                 className={cn(
-                                                    "w-10 h-10 rounded-[10px] transition-all duration-200",
+                                                    "w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-[10px] transition-all duration-200",
                                                     isCompleted ? colorTheme.bg : "bg-slate-100",
                                                     isToday && !isCompleted && "ring-2 ring-slate-300 ring-offset-2",
                                                     isToday ? "cursor-pointer hover:bg-slate-200" : "cursor-default"
@@ -142,8 +144,8 @@ export default function WeekView({ habits, onToggle }: WeekViewProps) {
                                 })}
                             </div>
 
-                            {/* Right: Progress */}
-                            <div className="w-12 text-right">
+                            {/* Right: Progress (Desktop only) */}
+                            <div className="hidden md:block w-12 text-right">
                                 <span className="text-slate-400 font-medium text-sm">{weeklyCompletions} / 7</span>
                             </div>
                         </motion.div>

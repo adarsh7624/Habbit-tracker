@@ -109,17 +109,17 @@ export default function CalendarView({ habits }: CalendarViewProps) {
     };
 
     return (
-        <div className="bg-white/50 backdrop-blur-xl rounded-[32px] p-8 shadow-sm border border-white/20">
+        <div className="bg-white/50 backdrop-blur-xl rounded-[32px] p-4 md:p-8 shadow-sm border border-white/20">
             {/* Header */}
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
                 <div>
-                    <h2 className="font-black text-3xl text-slate-800 tracking-tight">
+                    <h2 className="font-black text-2xl md:text-3xl text-slate-800 tracking-tight">
                         {format(currentDate, 'MMMM yyyy')}
                     </h2>
-                    <p className="text-slate-400 font-medium">Monthly Consistency</p>
+                    <p className="text-slate-400 font-medium text-sm md:text-base">Monthly Consistency</p>
                 </div>
 
-                <div className="flex gap-2 bg-white rounded-2xl p-1 shadow-sm border border-slate-100">
+                <div className="flex gap-2 bg-white rounded-2xl p-1 shadow-sm border border-slate-100 self-start md:self-auto">
                     <Button variant="ghost" size="icon" onClick={prevMonth} className="rounded-xl h-10 w-10 hover:bg-slate-50">
                         <ChevronLeft className="h-5 w-5 text-slate-600" />
                     </Button>
@@ -133,14 +133,14 @@ export default function CalendarView({ habits }: CalendarViewProps) {
             {/* Weekday Header */}
             <div className="grid grid-cols-7 mb-4">
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                    <div key={day} className="text-center text-slate-400 font-bold text-xs uppercase tracking-wider py-2">
+                    <div key={day} className="text-center text-slate-400 font-bold text-[10px] md:text-xs uppercase tracking-wider py-2">
                         {day}
                     </div>
                 ))}
             </div>
 
             {/* Calendar Grid */}
-            <div className="grid grid-cols-7 gap-3">
+            <div className="grid grid-cols-7 gap-1 md:gap-3">
                 <AnimatePresence mode='popLayout'>
                     {days.map((day, idx) => {
                         const isCurrentMonth = isSameMonth(day, currentDate);
@@ -191,13 +191,13 @@ export default function CalendarView({ habits }: CalendarViewProps) {
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ delay: idx * 0.015, type: "spring", stiffness: 300, damping: 25 }}
                                 className={cn(
-                                    "min-h-[120px] rounded-2xl border p-3 flex flex-col gap-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 relative group overflow-hidden",
+                                    "min-h-[60px] md:min-h-[120px] rounded-lg md:rounded-2xl border p-1 md:p-3 flex flex-col gap-1 md:gap-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 relative group overflow-hidden",
                                     bgClass
                                 )}
                             >
                                 <div className="flex justify-between items-start relative z-10">
                                     <span className={cn(
-                                        "text-lg font-bold transition-colors",
+                                        "text-xs md:text-lg font-bold transition-colors",
                                         isCurrentMonth ? "text-slate-700" : "text-slate-300",
                                         total > 0 && percentage === 100 && "text-emerald-700",
                                         total > 0 && percentage === 0 && percentage < 100 && "text-rose-700",
@@ -207,15 +207,15 @@ export default function CalendarView({ habits }: CalendarViewProps) {
                                     </span>
                                     {isCurrentMonth && total > 0 && (
                                         <div className="flex flex-col items-end">
-                                            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full transition-all", badgeClass)}>
+                                            <span className={cn("text-[8px] md:text-[10px] font-bold px-1.5 py-0.5 rounded-full transition-all", badgeClass)}>
                                                 {percentage}%
                                             </span>
                                         </div>
                                     )}
                                 </div>
 
-                                {/* Habit List */}
-                                <div className="space-y-1 overflow-y-auto max-h-[70px] custom-scrollbar relative z-10">
+                                {/* Habit List (Desktop) */}
+                                <div className="hidden md:block space-y-1 overflow-y-auto max-h-[70px] custom-scrollbar relative z-10">
                                     {isCurrentMonth && dayItems.map((item, i) => (
                                         <div key={i} className="flex items-center gap-1.5 px-1.5 py-1 rounded-lg bg-white/70 backdrop-blur-sm border border-white/50 hover:bg-white transition-colors">
                                             <div className={cn(
@@ -230,6 +230,22 @@ export default function CalendarView({ habits }: CalendarViewProps) {
                                             </span>
                                         </div>
                                     ))}
+                                </div>
+
+                                {/* Habit Dots (Mobile) */}
+                                <div className="md:hidden flex flex-wrap gap-1 content-start mt-1">
+                                    {isCurrentMonth && dayItems.slice(0, 6).map((item, i) => (
+                                        <div
+                                            key={i}
+                                            className={cn(
+                                                "w-1.5 h-1.5 rounded-full",
+                                                item.completed ? "bg-emerald-500" : "bg-slate-300"
+                                            )}
+                                        />
+                                    ))}
+                                    {isCurrentMonth && dayItems.length > 6 && (
+                                        <div className="w-1.5 h-1.5 text-[6px] text-slate-400 leading-none">+</div>
+                                    )}
                                 </div>
 
                                 {/* Visual Progress Bar at Bottom */}
