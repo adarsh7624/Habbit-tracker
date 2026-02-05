@@ -10,13 +10,12 @@ const Task = require('../models/Task'); // Assuming you have a Task model, if no
 
 const protect = require('../middleware/auth'); // Import protect
 
-router.get('/generate', protect, async (req, res) => { // Use protect
+router.get('/generate', protect, async (req, res) => {
     try {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
         // 1. Fetch User Data
-        // Fetch tasks for the last 30 days for AI context, and last 7 days for Graph
         const thirtyDaysAgo = new Date(today);
         thirtyDaysAgo.setDate(today.getDate() - 30);
 
@@ -26,109 +25,150 @@ router.get('/generate', protect, async (req, res) => { // Use protect
         });
         const habits = await Habit.find({ user: req.user.id });
 
-        // Helper to parse duration (e.g. "30 min", "1h", "45") -> minutes
-        const parseDuration = (dur) => {
-            if (!dur) return 30; // Default
-            const str = String(dur).toLowerCase();
-            if (str.includes('h')) return parseFloat(str) * 60;
-            return parseFloat(str) || 30;
-        };
+        // --- CALCULATION LOGIC ---
 
-        // 2. Generate Graph Data (Last 7 Days)
+        // 1. Overall Stats
+        const totalHabits = habits.length;
+        const currentLongestStreak = Math.max(...habits.map(h => h.streak), 0);
+        const bestEvaStreak = Math.max(...habits.map(h => h.bestStreak || h.streak), 0);
+
+        // Count missed days in the last 30 days across all habits
+        let totalMissedInPeriod = 0;
+        let totalOpportunities = 0;
+        let totalCompleted = 0;
+
+        habits.forEach(habit => {
+            const history = habit.history || [];
+            // Filter history for reporting period
+            const recentHistory = history.filter(h => new Date(h.date) >= thirtyDaysAgo);
+
+            recentHistory.forEach(h => {
+                totalOpportunities++;
+                if (h.status === 'completed') totalCompleted++;
+                if (h.status === 'missed') totalMissedInPeriod++;
+            });
+        });
+
+        const overallConsistency = totalOpportunities > 0
+            ? Math.round((totalCompleted / totalOpportunities) * 100)
+            : 0;
+
+        // 2. Determine Rank
+        let rank = "Starter";
+        if (bestEvaStreak >= 365) rank = "Legend";
+        else if (bestEvaStreak >= 90) rank = "Champion";
+        else if (bestEvaStreak >= 30) rank = "Warrior";
+        else if (bestEvaStreak >= 15) rank = "Builder";
+
+        // 3. Trend Analysis (Last 7 days vs Previous 7 days)
+        const last7DaysStart = new Date(today);
+        last7DaysStart.setDate(today.getDate() - 7);
+        const prev7DaysStart = new Date(today);
+        prev7DaysStart.setDate(today.getDate() - 14);
+
+        let last7Completed = 0;
+        let prev7Completed = 0;
+
+        habits.forEach(habit => {
+            (habit.history || []).forEach(h => {
+                const d = new Date(h.date);
+                if (d >= last7DaysStart && d <= today && h.status === 'completed') last7Completed++;
+                if (d >= prev7DaysStart && d < last7DaysStart && h.status === 'completed') prev7Completed++;
+            });
+        });
+
+        let trend = "Stable";
+        if (last7Completed > prev7Completed) trend = "Improving";
+        else if (last7Completed < prev7Completed) trend = "Declining";
+
+        // 4. Best Habit (Highest Streak)
+        const bestHabitObj = habits.reduce((prev, current) => (prev.streak > current.streak) ? prev : current, { title: "None", streak: 0 });
+
+        // 5. Generate Graph Data (Last 14 days or Month) - Merging Habit Completion
         const graphData = [];
         const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-        for (let i = 6; i >= 0; i--) {
+        // Analyze last 14 days for the graph
+        for (let i = 13; i >= 0; i--) {
             const d = new Date(today);
             d.setDate(today.getDate() - i);
             const dateStr = d.toISOString().split('T')[0];
             const dayName = dayNames[d.getDay()];
 
-            // Filter tasks for this day
-            const dayTasks = tasks.filter(t => {
-                const tDate = new Date(t.date).toISOString().split('T')[0];
-                return tDate === dateStr;
+            let dailyCompleted = 0;
+            let dailyTotal = 0;
+
+            habits.forEach(habit => {
+                // Check if habit was active/due this day (implied simple check for now)
+                // In a perfect world we check creation date and frequency
+                // For now, check history
+                const entry = habit.history?.find(h => new Date(h.date).toISOString().split('T')[0] === dateStr);
+                if (entry) {
+                    dailyTotal++;
+                    if (entry.status === 'completed') dailyCompleted++;
+                }
             });
 
-            const planned = dayTasks.reduce((acc, t) => acc + parseDuration(t.duration), 0);
-            const actual = dayTasks
-                .filter(t => t.isCompleted)
-                .reduce((acc, t) => acc + parseDuration(t.duration), 0);
+            // Also include Tasks if needed, but keeping it Habit focused as per request
+            const dayTasks = tasks.filter(t => new Date(t.date).toISOString().split('T')[0] === dateStr);
+            // tasks typically have duration, habits count as 1 unit or fixed time?
+            // Let's stick to "Consistency %" for the graph Y-axis
 
-            // Recovered Logic (Optional: based on some flag if you have it, else 0)
-            const recovered = 0;
+            const consistency = dailyTotal > 0 ? Math.round((dailyCompleted / dailyTotal) * 100) : 0;
 
             graphData.push({
                 day: dayName,
-                planned: planned || 0, // Ensure no NaNs, though reduce default 0 handles it.
-                actual: actual || 0,
-                recovered
+                date: dateStr,
+                consistency: consistency,
+                completed: dailyCompleted,
+                total: dailyTotal
             });
         }
 
-        // Calculate basic stats for AI
-        const totalTasks = tasks.length;
-        const completedTasks = tasks.filter(t => t.isCompleted).length;
-        const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+        // 6. Habit-Wise Performance Report
+        const habitPerformance = habits.map(h => {
+            const completes = (h.history || []).filter(item => item.status === 'completed').length;
+            const total = (h.history || []).length; // Or filter by start date
+            const rate = total > 0 ? Math.round((completes / total) * 100) : 0;
+            return {
+                title: h.title,
+                streak: h.streak,
+                bestStreak: h.bestStreak || h.streak,
+                consistency: rate,
+                missed: (h.history || []).filter(item => item.status === 'missed').length
+            };
+        });
 
-        // Calculate "Focus Mode" impact (Mock logic: assume tasks with "Recovered" note are Focus Mode)
-        const focusModeTasks = tasks.filter(t => t.description && t.description.includes('Recovered'));
-        const focusModeCompletion = focusModeTasks.filter(t => t.isCompleted).length;
-        const focusImpact = focusModeTasks.length > 0
-            ? Math.round((focusModeCompletion / focusModeTasks.length) * 100)
-            : 0;
-
-        // Prepare Data Context for AI
+        // 7. AI Insight Generation
+        // Simplified data context to not overload context window
         const dataContext = {
-            period: "Last 30 Days",
             stats: {
-                total_effort_minutes: tasks.reduce((acc, t) => acc + parseDuration(t.duration), 0),
-                completion_rate: completionRate,
-                habits_active: habits.length,
-                current_streak: Math.max(...habits.map(h => h.streak), 0),
-                focus_mode_usage: focusModeTasks.length,
-                focus_mode_success_rate: focusImpact
+                rank,
+                trend,
+                overallConsistency,
+                bestHabit: bestHabitObj.title,
+                currentStreak: currentLongestStreak
             },
-            recent_activity: tasks.slice(-5).map(t => ({ // Limit to 5 for smaller prompt
-                title: t.title,
-                status: t.isCompleted ? "Done" : "Missed",
-                date: t.date
-            }))
+            recentMisses: totalMissedInPeriod,
+            habitPerformance: habitPerformance.slice(0, 5) // Top 5
         };
 
         const prompt = `
-        You are an AI Performance Analyst and Habit Coach.
-        Analyze the user's habit and task data and generate clear, motivational insights.
+        As an AI Habit Coach, analyze this user's data:
+        ${JSON.stringify(dataContext)}
 
-        DATA RECEIVED:
-        ${JSON.stringify(dataContext, null, 2)}
-
-        YOUR TASK:
-        1. Identify patterns and trends
-        2. Highlight strengths
-        3. Point out risk areas gently
-        4. Explain the impact of Focus Mode (if used)
-        5. Suggest ONE improvement for next period
-
-        RULES:
-        • Be supportive, never critical
-        • Use simple language
-        • Avoid numbers overload
-        • Keep summary under 120 words
-
-        OUTPUT FORMAT (STRICT JSON):
+        Output JSON with motivational analysis:
         {
-          "summary": "Short weekly or monthly insight",
-          "strengths": ["Strength 1", "Strength 2"],
+          "summary": "1-2 sentence human-like insight.",
+          "strengths": ["Tag 1", "Tag 2"],
           "risks": ["Risk 1", "Risk 2"],
-          "focusModeImpact": "Explanation of how focus mode successfully rescued X tasks...",
-          "nextAction": "One clear suggestion",
-          "grade": "A/B/C"
+          "nextAction": "One specific advice",
+          "grade": "A/B/C/D"
         }
-        Return ONLY the JSON.
         `;
 
         let text = await generateContentWithFallback(prompt);
+        // Clean JSON
         text = text.replace(/```json/g, '').replace(/```/g, '').trim();
         const jsonStart = text.indexOf('{');
         const jsonEnd = text.lastIndexOf('}');
@@ -136,13 +176,26 @@ router.get('/generate', protect, async (req, res) => { // Use protect
             text = text.substring(jsonStart, jsonEnd + 1);
         }
 
-        const report = JSON.parse(text);
+        const aiReport = JSON.parse(text);
 
-        // Enhance report with calculated stats for the dashboard graphs
-        report.stats = dataContext.stats;
-        report.graphData = graphData; // <--- Attach Real Graph Data
+        // Construct Final Report Object
+        const finalReport = {
+            stats: {
+                total_habits: totalHabits,
+                longest_streak: currentLongestStreak,
+                best_streak_ever: bestEvaStreak,
+                user_rank: rank,
+                missed_days: totalMissedInPeriod,
+                consistency_rate: overallConsistency,
+                best_habit: bestHabitObj.title,
+                trend: trend
+            },
+            graphData: graphData,
+            habitPerformance: habitPerformance,
+            ...aiReport
+        };
 
-        res.json(report);
+        res.json(finalReport);
 
     } catch (error) {
         console.error("Report Generation Error:", error);

@@ -101,3 +101,93 @@
     color: hsl(var(--foreground));
   }
 }
+
+@media print {
+  @page {
+    margin: 0.25cm;
+    size: auto;
+  }
+
+  body {
+    visibility: visible;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background-color: white !important;
+  }
+
+  /* Hide UI elements */
+  .no-print,
+  nav,
+  header,
+  footer,
+  .fixed,
+  .sticky {
+    display: none !important;
+  }
+
+  /* Optimize Main Content */
+  .container {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Compact Print Layout */
+  body {
+    transform: scale(0.85);
+    /* strict one-page enforcement */
+    transform-origin: top left;
+    width: 117.6%;
+    /* Compensate for scale(0.85) => 1/0.85 approx 1.176 */
+    overflow: visible !important;
+  }
+
+  .print-compact-gap {
+    gap: 1rem !important;
+  }
+
+  .print-no-gap {
+    gap: 0.5rem !important;
+  }
+
+  .print-p-small {
+    padding: 0.75rem !important;
+  }
+
+  .print-h-small {
+    height: 160px !important;
+    min-height: 0 !important;
+  }
+
+  .print-text-small {
+    font-size: 0.8rem !important;
+  }
+
+  /* Remove shadows and borders for cleaner print */
+  .shadow-sm,
+  .shadow-md,
+  .shadow-lg {
+    box-shadow: none !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+
+  /* Ensure text is dark enough */
+  p,
+  h1,
+  h2,
+  h3,
+  h4,
+  span,
+  div {
+    color: #0f172a !important;
+    /* slate-900 */
+    text-shadow: none !important;
+  }
+
+  /* Allow text colors that are specifically important (like trends) to stay if needed, 
+     but generally dark text is safer. Let's relax the color rule for specific badges */
+  .text-white {
+    color: white !important;
+  }
+}
