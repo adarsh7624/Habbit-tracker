@@ -199,6 +199,22 @@ router.put('/:id', protect, async (req, res) => {
     }
 });
 
+// @desc    Toggle pause status
+// @route   PUT /api/habits/:id/pause
+router.put('/:id/pause', protect, async (req, res) => {
+    try {
+        const habit = await Habit.findById(req.params.id);
+        if (!habit) return res.status(404).json({ message: 'Habit not found' });
+        if (habit.user.toString() !== req.user.id) return res.status(401).json({ message: 'Not authorized' });
+
+        habit.isPaused = !habit.isPaused;
+        await habit.save();
+        res.json(habit);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 // @desc    Delete a habit
 // @route   DELETE /api/habits/:id
 // @access  Private

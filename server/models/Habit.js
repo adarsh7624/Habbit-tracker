@@ -68,6 +68,10 @@ const HabitSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    isPaused: {
+        type: Boolean,
+        default: false,
+    },
 }, {
     timestamps: true,
 });

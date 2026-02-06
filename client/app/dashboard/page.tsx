@@ -27,7 +27,9 @@ type Habit = {
     history: { date: string; status: string }[];
     frequencyDays?: string[]; // Optional for backward compatibility
     startDate?: string;
+    startDate?: string;
     endDate?: string;
+    isPaused: boolean;
 };
 
 type Task = {
@@ -36,6 +38,7 @@ type Task = {
     duration: string;
     difficulty: string;
     isCompleted: boolean;
+    isPaused: boolean;
     category: string;
     date: string;
 };
@@ -248,6 +251,30 @@ export default function Dashboard() {
         } catch (error: any) {
             console.error(error);
             alert(error.response?.data?.message || 'Failed to update task. Try refreshing.');
+        }
+    };
+
+    const toggleTaskPause = async (id: string) => {
+        try {
+            await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/tasks/${id}/pause`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (token) fetchData(token);
+        } catch (error: any) {
+            console.error(error);
+            alert(error.response?.data?.message || 'Failed to pause task.');
+        }
+    };
+
+    const toggleHabitPause = async (id: string) => {
+        try {
+            await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/habits/${id}/pause`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (token) fetchData(token);
+        } catch (error: any) {
+            console.error(error);
+            alert(error.response?.data?.message || 'Failed to pause habit.');
         }
     };
 
@@ -704,7 +731,7 @@ export default function Dashboard() {
                                     <div className="space-y-8">
                                         {/* Task Timeline from AI Planner */}
                                         {tasks.length > 0 && (
-                                            <TaskTimeline tasks={tasks} onToggle={toggleTask} />
+                                            <TaskTimeline tasks={tasks} onToggle={toggleTask} onPause={toggleTaskPause} />
                                         )}
 
                                         {/* Recurring Habits */}
@@ -781,9 +808,10 @@ export default function Dashboard() {
                                                         }
 
                                                         return (
-                                                            <Card key={habit._id} className={`group hover:shadow-lg transition-all duration-300 ${finished ? 'bg-green-50/50 dark:bg-green-900/10 border-green-200' :
-                                                                partial ? 'bg-yellow-50/50 border-yellow-200' :
-                                                                    'hover:border-primary/50'
+                                                            <Card key={habit._id} className={`group hover:shadow-lg transition-all duration-300 ${habit.isPaused ? 'border-yellow-400 bg-yellow-50/10' :
+                                                                finished ? 'bg-green-50/50 dark:bg-green-900/10 border-green-200' :
+                                                                    partial ? 'bg-yellow-50/50 border-yellow-200' :
+                                                                        'hover:border-primary/50'
                                                                 }`}>
                                                                 <CardContent className="p-5">
                                                                     <div className="flex justify-between items-start mb-4">
@@ -846,15 +874,41 @@ export default function Dashboard() {
                                                                                 </div>
                                                                             )}
                                                                         </div>
-
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            onClick={() => setEditHabit(habit)}
-                                                                            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 -mr-2"
-                                                                        >
-                                                                            <Pencil className="h-4 w-4" />
-                                                                        </Button>
+                                                                        {/* Card Actions (Edit, Pause) */}
+                                                                        <div className="flex gap-2">
+                                                                            <button
+                                                                                onClick={() => toggleHabitPause(habit._id)}
+                                                                                className={`p-1.5 rounded-full transition-colors ${habit.isPaused ? 'text-yellow-600 bg-yellow-100 hover:bg-yellow-200' : 'text-slate-400 hover:text-yellow-500 hover:bg-yellow-50'}`}
+                                                                                title={habit.isPaused ? "Resume Habit" : "Pause Habit"}
+                                                                            >
+                                                                                <div className="relative w-4 h-4 flex items-center justify-center">
+                                                                                    {habit.isPaused ? (
+                                                                                        // Play Icon
+                                                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                                                                                            <path fillRule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clipRule="evenodd" />
+                                                                                        </svg>
+                                                                                    ) : (
+                                                                                        // Pause Icon
+                                                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                                                                                            <path fillRule="evenodd" d="M6.75 5.25a.75.75 0 01.75-.75H9a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75H7.5a.75.75 0 01-.75-.75V5.25zm7.5 0A.75.75 0 0115 4.5h1.5a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75H15a.75.75 0 01-.75-.75V5.25z" clipRule="evenodd" />
+                                                                                        </svg>
+                                                                                    )}
+                                                                                </div>
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    setEditHabit(habit);
+                                                                                    setNewHabit(habit.title);
+                                                                                    setCategory(habit.category);
+                                                                                    setCreationMode('habit');
+                                                                                    // scroll to form?
+                                                                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                                                }}
+                                                                                className="text-slate-400 hover:text-primary transition-colors"
+                                                                            >
+                                                                                <Pencil className="h-4 w-4" />
+                                                                            </button>
+                                                                        </div>
                                                                     </div>
                                                                 </CardContent>
                                                             </Card>

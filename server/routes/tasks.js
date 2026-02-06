@@ -67,6 +67,22 @@ router.post('/bulk', protect, async (req, res) => {
     }
 });
 
+// @desc    Toggle pause status
+// @route   PUT /api/tasks/:id/pause
+router.put('/:id/pause', protect, async (req, res) => {
+    try {
+        const task = await Task.findById(req.params.id);
+        if (!task) return res.status(404).json({ message: 'Task not found' });
+        if (task.user.toString() !== req.user.id) return res.status(401).json({ message: 'Not authorized' });
+
+        task.isPaused = !task.isPaused;
+        await task.save();
+        res.json(task);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 // @desc    Toggle completion
 // @route   PUT /api/tasks/:id/check
 router.put('/:id/check', protect, async (req, res) => {

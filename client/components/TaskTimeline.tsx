@@ -9,16 +9,19 @@ type Task = {
     duration: string;
     difficulty: string;
     isCompleted: boolean;
+    isPaused: boolean;
     category: string;
     date: string;
 };
 
-export default function TaskTimeline({ tasks, onToggle }: { tasks: Task[], onToggle: (id: string) => void }) {
+export default function TaskTimeline({ tasks, onToggle, onPause }: { tasks: Task[], onToggle: (id: string) => void, onPause: (id: string) => void }) {
     if (tasks.length === 0) return null;
 
-    const total = tasks.length;
-    const completed = tasks.filter(t => t.isCompleted).length;
-    const progress = Math.round((completed / total) * 100);
+    // Filter out paused tasks from calculation
+    const activeTasks = tasks.filter(t => !t.isPaused);
+    const total = activeTasks.length;
+    const completed = activeTasks.filter(t => t.isCompleted).length;
+    const progress = total === 0 ? 0 : Math.round((completed / total) * 100);
 
     return (
         <div className="space-y-4 mt-8">
@@ -28,7 +31,7 @@ export default function TaskTimeline({ tasks, onToggle }: { tasks: Task[], onTog
                     Daily Goal Progress
                 </h2>
                 <div className="flex items-center gap-3">
-                    <div className="text-sm font-bold text-muted-foreground">{progress}% Completed</div>
+                    <div className="text-sm font-bold text-muted-foreground">{total}/{tasks.length} Active • {progress}% Done</div>
                     <div className="w-24 h-2 bg-secondary rounded-full overflow-hidden">
                         <div
                             className="h-full bg-green-500 transition-all duration-500 ease-out"
@@ -43,7 +46,8 @@ export default function TaskTimeline({ tasks, onToggle }: { tasks: Task[], onTog
                         {/* Timeline Node */}
                         <div className={cn(
                             "absolute -left-[41px] top-1 h-5 w-5 rounded-full border-4 bg-background transition-colors",
-                            task.isCompleted ? "border-green-500" : "border-muted-foreground group-hover:border-primary"
+                            task.isPaused ? "border-yellow-400" :
+                                task.isCompleted ? "border-green-500" : "border-muted-foreground group-hover:border-primary"
                         )}></div>
 
                         <Card className={cn(
@@ -75,6 +79,23 @@ export default function TaskTimeline({ tasks, onToggle }: { tasks: Task[], onTog
                                 }}>
                                     {task.isCompleted && <Check className="h-4 w-4" />}
                                 </div>
+
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onPause(task._id);
+                                    }}
+                                    className={cn(
+                                        "w-8 h-8 rounded-full flex items-center justify-center transition-colors ml-2",
+                                        task.isPaused ? "text-yellow-500 bg-yellow-50 hover:bg-yellow-100" : "text-slate-400 hover:bg-slate-100"
+                                    )}
+                                    title={task.isPaused ? "Resume Task" : "Pause Task"}
+                                >
+                                    <div className="relative">
+                                        <Circle className="w-5 h-5" />
+                                        <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold">||</div>
+                                    </div>
+                                </button>
                             </CardContent>
                         </Card>
                     </div>
