@@ -27,7 +27,6 @@ type Habit = {
     history: { date: string; status: string }[];
     frequencyDays?: string[]; // Optional for backward compatibility
     startDate?: string;
-    startDate?: string;
     endDate?: string;
     isPaused: boolean;
 };
