@@ -50,12 +50,27 @@ router.get('/dashboard-stats', protect, async (req, res) => {
         // 4. Calculate Streak (Consecutive days with at least 1 completed task)
         // Group by date, using ALL history for accurate streak
         const allTasks = await Task.find({ user: userId, isCompleted: true }).select('date');
-        const allTasksByDate = {};
+        const allHabits = await require('../models/Habit').find({ user: userId, isArchived: false }).select('history'); // Need history for habits
+
+        const activityByDate = {};
+
+        // Map Tasks
         allTasks.forEach(t => {
-            // Handle case where date might be invalid or not a Date object
             if (t.date && t.date instanceof Date) {
                 const dKey = t.date.toISOString().split('T')[0];
-                allTasksByDate[dKey] = true;
+                activityByDate[dKey] = true;
+            }
+        });
+
+        // Map Habits (Complete or Partial)
+        allHabits.forEach(h => {
+            if (h.history && Array.isArray(h.history)) {
+                h.history.forEach(entry => {
+                    if (entry.status === 'completed' || entry.status === 'partial') {
+                        const dKey = new Date(entry.date).toISOString().split('T')[0];
+                        activityByDate[dKey] = true;
+                    }
+                });
             }
         });
 
@@ -67,9 +82,9 @@ router.get('/dashboard-stats', protect, async (req, res) => {
             const key = d.toISOString().split('T')[0];
 
             // Allow today to be incomplete without breaking streak if yesterday was done
-            if (i === 0 && !allTasksByDate[key]) continue;
+            if (i === 0 && !activityByDate[key]) continue;
 
-            if (allTasksByDate[key]) {
+            if (activityByDate[key]) {
                 streak++;
             } else {
                 break;

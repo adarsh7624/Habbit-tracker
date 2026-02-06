@@ -25,16 +25,25 @@ async function getDailyHabits(userId) {
     // Filter relevant habits & check completion
     const todaysHabits = habits.filter(h => {
         if (h.endDate && new Date(h.endDate) < now) return false; // Expired
-        return true; // Assume daily for now, can add frequency check later
+        return true;
     }).map(h => {
-        const isCompleted = h.history.some(entry => {
+        // Find today's entry in history
+        const todayEntry = h.history.find(entry => {
             const entryDate = new Date(entry.date).setHours(0, 0, 0, 0);
-            return entryDate === todayStr && entry.status === 'completed';
+            return entryDate === todayStr;
         });
+
+        const status = todayEntry ? todayEntry.status : (h.isPaused ? 'paused' : 'missed');
+
         return {
+            _id: h._id, // Keep ID for potential updates
             title: h.title,
-            isCompleted,
-            type: 'habit'
+            isCompleted: status === 'completed',
+            isPartial: status === 'partial',
+            isPaused: h.isPaused,
+            status: status,
+            type: 'habit',
+            streak: h.streak
         };
     });
 
@@ -119,25 +128,37 @@ const sendDailyReport = async (user) => {
 
     const totalHabits = habits.length;
     const completedHabits = habits.filter(h => h.isCompleted).length;
+    const partialHabits = habits.filter(h => h.isPartial).length;
 
     const total = totalTasks + totalHabits;
     const completed = completedTasks + completedHabits;
+    // Percent calculation (Purely for report card visuals, not streak logic anymore)
+    const visualTotal = total > 0 ? total : 1;
+    const visualCompleted = completedTasks + completedHabits + (partialHabits * 0.5); // Give half credit visually
+    const percent = Math.round((visualCompleted / visualTotal) * 100);
 
-    if (total === 0) return { sent: false, reason: 'No tasks or habits for today' };
-
-    const percent = Math.round((completed / total) * 100);
-
-    // --- PHASE 15: CONSISTENCY ENGINE ---
+    // --- PHASE 15: CONSISTENCY ENGINE (UPDATED) ---
     let savedByInsurance = false;
     let earnedToken = false;
 
-    // 1. Check for Streak Failure
-    if (percent < 100) {
-        // User failed to complete everything. Check insurance.
+    // 0. RESET INDIVIDUAL HABIT STREAKS
+    // We need to fetch raw habits to save them, as 'habits' here is a mapped object
+    for (const h of habits) {
+        if (h.status === 'missed' && !h.isPaused) {
+            // Reset this habit's streak
+            await Habit.findByIdAndUpdate(h._id, { streak: 0 });
+        }
+    }
+
+    // 1. Check for Global Streak Success (Any Activity Rule)
+    const anyActivity = (completedTasks > 0) || (completedHabits > 0) || (partialHabits > 0);
+
+    if (!anyActivity) {
+        // User failed to do ANYTHING. Check insurance.
         if (user.insuranceTokens > 0) {
             user.insuranceTokens -= 1;
             savedByInsurance = true;
-            // Streak preserved (neither incremented nor reset)
+            // Streak preserved
         } else {
             user.streak = 0; // Streak broken
         }
