@@ -229,7 +229,8 @@ export default function Dashboard() {
 
     const toggleHabit = async (id: string, status: 'completed' | 'partial' = 'completed', progress: number = 100) => {
         try {
-            const today = new Date().toISOString();
+            // FIX: Use Local Date String to ensure we mark the correct Calendar Day
+            const today = new Date().toLocaleDateString('en-CA');
             await axios.put(
                 `${process.env.NEXT_PUBLIC_API_URL}/api/habits/${id}/check`,
                 { date: today, status, progress },
@@ -291,8 +292,9 @@ export default function Dashboard() {
 
     const getTodayStatus = (history: { date: string; status: string }[]) => {
         if (!history) return null;
-        const today = new Date().setHours(0, 0, 0, 0);
-        const entry = history.find((h) => new Date(h.date).setHours(0, 0, 0, 0) === today);
+        // FIX: Compare using Local Date String to match what we send
+        const todayKey = new Date().toLocaleDateString('en-CA');
+        const entry = history.find((h) => new Date(h.date).toLocaleDateString('en-CA') === todayKey);
         return entry ? entry.status : null;
     };
 
@@ -841,7 +843,7 @@ export default function Dashboard() {
                                                                                     title="Partial Win (50%)"
                                                                                     className="h-10 w-10 rounded-xl flex items-center justify-center transition-all duration-300 bg-yellow-50 text-yellow-600 hover:bg-yellow-200 hover:scale-105"
                                                                                 >
-                                                                                    <div className="h-4 w-4 rounded-full border-2 border-current border-t-transparent" />
+                                                                                    <span className="text-[10px] font-bold">50%</span>
                                                                                 </button>
                                                                             )}
 
