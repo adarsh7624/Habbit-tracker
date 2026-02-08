@@ -57,7 +57,7 @@ router.get('/dashboard-stats', protect, async (req, res) => {
         // Map Tasks
         allTasks.forEach(t => {
             if (t.date && t.date instanceof Date) {
-                const dKey = t.date.toISOString().split('T')[0];
+                const dKey = t.date.toLocaleDateString('en-CA');
                 activityByDate[dKey] = true;
             }
         });
@@ -67,7 +67,7 @@ router.get('/dashboard-stats', protect, async (req, res) => {
             if (h.history && Array.isArray(h.history)) {
                 h.history.forEach(entry => {
                     if (entry.status === 'completed' || entry.status === 'partial') {
-                        const dKey = new Date(entry.date).toISOString().split('T')[0];
+                        const dKey = new Date(entry.date).toLocaleDateString('en-CA');
                         activityByDate[dKey] = true;
                     }
                 });
@@ -79,7 +79,7 @@ router.get('/dashboard-stats', protect, async (req, res) => {
         for (let i = 0; i < 730; i++) {
             const d = new Date(today);
             d.setDate(today.getDate() - i);
-            const key = d.toISOString().split('T')[0];
+            const key = d.toLocaleDateString('en-CA');
 
             // Allow today to be incomplete without breaking streak if yesterday was done
             if (i === 0 && !activityByDate[key]) continue;
