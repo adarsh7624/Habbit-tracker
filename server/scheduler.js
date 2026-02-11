@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const User = require('./models/User');
 const { sendWhatsAppMessage } = require('./services/whatsapp'); // Keeping for Auto-Resume
 const { sendMorningBriefing, sendEveningNudge, sendDailyReport } = require('./services/cronLogic');
+const { checkAndResetHabitStreaks } = require('./services/streakService');
 
 const initScheduler = () => {
     console.log("📅 Scheduler Initialized...");
@@ -33,10 +34,11 @@ const initScheduler = () => {
         }
     }, { scheduled: true, timezone: "Asia/Kolkata" });
 
-    // 4. Auto-Resume "Pause Life" - Checks every midnight
+    // 4. Auto-Resume "Pause Life" & Streak Reset - Checks every midnight
     cron.schedule('0 0 * * *', async () => {
-        console.log('Running Auto-Resume Check...');
+        console.log('Running Midnight Tasks (Auto-Resume & Streak Check)...');
         try {
+            // Auto-Resume
             const users = await User.find({ isPaused: true, pausedUntil: { $lte: new Date() } });
             for (const user of users) {
                 user.isPaused = false;
@@ -48,8 +50,15 @@ const initScheduler = () => {
                     await sendWhatsAppMessage(user.phoneNumber, `🎉 *Welcome Back, ${user.name}!* \n\nYour vacation mode has ended. We are ready to resume your tracking. Let's go! 🚀`);
                 }
             }
+
+            // Streak Reset
+            const allUsers = await User.find({});
+            for (const user of allUsers) {
+                await checkAndResetHabitStreaks(user._id);
+            }
+
         } catch (error) {
-            console.error('Error in Auto-Resume:', error);
+            console.error('Error in Midnight Tasks:', error);
         }
     }, { scheduled: true, timezone: "Asia/Kolkata" });
 };

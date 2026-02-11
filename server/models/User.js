@@ -65,6 +65,14 @@ const UserSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    consistencyScore: {
+        type: Number,
+        default: 0
+    },
+    lastActiveDate: {
+        type: Date,
+        default: Date.now
+    },
     habitDNA: {
         type: Object, // Stores analysis like { bestTime: '08:00', recoverySpeed: 2, etc. }
         default: {}

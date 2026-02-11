@@ -3,6 +3,7 @@ const router = express.Router();
 const Habit = require('../models/Habit');
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const { checkAndResetHabitStreaks } = require('../services/streakService');
 
 // Middleware to protect routes
 const protect = async (req, res, next) => {
@@ -26,6 +27,8 @@ const protect = async (req, res, next) => {
 // @access  Private
 router.get('/', protect, async (req, res) => {
     try {
+        await checkAndResetHabitStreaks(req.user.id); // Validates and resets streaks before user sees them
+
         const habits = await Habit.find({
             user: req.user.id,
             $or: [{ isArchived: false }, { isArchived: { $exists: false } }]

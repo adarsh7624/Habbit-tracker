@@ -132,10 +132,23 @@ const sendDailyReport = async (user) => {
 
     const total = totalTasks + totalHabits;
     const completed = completedTasks + completedHabits;
-    // Percent calculation (Purely for report card visuals, not streak logic anymore)
-    const visualTotal = total > 0 ? total : 1;
-    const visualCompleted = completedTasks + completedHabits + (partialHabits * 0.5); // Give half credit visually
-    const percent = Math.round((visualCompleted / visualTotal) * 100);
+    // Weighted Consistency Calculation
+    // Habits: 60%
+    // Tasks: 40% (if present), otherwise Habits are 100%
+
+    let consistencyScore = 0;
+
+    if (totalTasks > 0) {
+        const habitScore = totalHabits > 0 ? (completedHabits / totalHabits) : 0;
+        const taskScore = completedTasks / totalTasks;
+        consistencyScore = (habitScore * 0.6) + (taskScore * 0.4);
+    } else {
+        // No tasks today, consistency matches habit completion
+        consistencyScore = totalHabits > 0 ? (completedHabits / totalHabits) : 0;
+    }
+
+    // Scale to 0-100
+    const percent = Math.round(consistencyScore * 100);
 
     // --- PHASE 15: CONSISTENCY ENGINE (UPDATED) ---
     let savedByInsurance = false;
@@ -173,8 +186,11 @@ const sendDailyReport = async (user) => {
         }
     }
 
-    // 4. Update Momentum (Daily Recalculation)
+    // 4. Update Momentum & Consistency
     user.momentumScore = Math.floor((user.streak * 10) + (user.points / 100));
+    user.consistencyScore = percent; // Save the daily calculated score
+    user.lastActiveDate = new Date(); // Using today's cron run time
+
     await user.save();
     // -------------------------------------
 
